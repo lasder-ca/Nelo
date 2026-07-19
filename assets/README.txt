@@ -1,0 +1,1 @@
+Temporary asset placeholder; replaced by binary blob in the next commit.
