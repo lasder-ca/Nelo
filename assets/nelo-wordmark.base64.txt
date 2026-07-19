@@ -1,1 +1,0 @@
-The binary PNG is maintained outside this placeholder and will be replaced before merge.
