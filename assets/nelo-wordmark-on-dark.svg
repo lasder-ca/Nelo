@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="190" viewBox="0 0 760 190" role="img" aria-labelledby="title desc">
+  <title id="title">Nelo</title>
+  <desc id="desc">Nelo logo with the tagline Every request owns its work.</desc>
+  <g transform="translate(36 31)">
+    <rect x="0" y="0" width="34" height="128" rx="15" fill="#78A4FF"/>
+    <rect x="98" y="0" width="34" height="128" rx="15" fill="#78D8C0"/>
+    <path d="M18 8H48L114 120H84Z" fill="#3D72D9"/>
+  </g>
+  <text x="208" y="105" fill="#F7F7F5" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="78" font-weight="700" letter-spacing="-4">Nelo</text>
+  <text x="212" y="145" fill="#A9AFB8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="21" font-weight="500" letter-spacing="-0.3">Every request owns its work.</text>
+</svg>
