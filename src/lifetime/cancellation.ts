@@ -5,6 +5,20 @@ export type CancellationReason =
   | { readonly type: "server_shutdown" }
   | { readonly type: "manual"; readonly reason?: unknown };
 
+export function isCancellationReason(value: unknown): value is CancellationReason {
+  if (typeof value !== "object" || value === null || !("type" in value)) return false;
+  return value.type === "client_disconnect" || value.type === "deadline" ||
+    value.type === "handler_failure" || value.type === "server_shutdown" ||
+    value.type === "manual";
+}
+
+export function cancellationReasonFromSignal(
+  signal: AbortSignal,
+  fallback: CancellationReason,
+): CancellationReason {
+  return isCancellationReason(signal.reason) ? signal.reason : fallback;
+}
+
 export class LifetimeCancelledError extends Error {
   override readonly name = "LifetimeCancelledError";
   readonly code = "NELO_SCOPE_002";

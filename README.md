@@ -155,7 +155,7 @@ Each path segment is percent-decoded once. Encoded slashes stay inside one param
 Semantically duplicate parameter routes are rejected, including `/users/:id` followed by
 `/users/:name` for the same method.
 
-## Runtime status
+## Runtime capabilities
 
 | Capability | Portable core | Node.js | Cloudflare | Deno | Bun |
 | --- | :---: | :---: | :---: | :---: | :---: |
@@ -216,6 +216,7 @@ deno task fmt
 deno task lint
 deno task check
 deno task test
+npm test
 npm run build
 npm run check:package
 npm --cache /tmp/nelo-npm-cache pack --dry-run

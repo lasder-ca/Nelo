@@ -1,9 +1,12 @@
 {
   "name": "nelo",
-  "version": "0.1.0-alpha.1",
+  "version": "0.2.0-alpha.1",
   "private": true,
   "type": "module",
   "description": "A request-ownership runtime and Web Standards framework for TypeScript.",
+  "engines": {
+    "node": "^20.0.0 || ^22.0.0 || ^24.0.0"
+  },
   "exports": {
     ".": {
       "types": "./dist/mod.d.ts",
@@ -12,6 +15,10 @@
     "./lifetime": {
       "types": "./dist/src/lifetime/mod.d.ts",
       "import": "./dist/src/lifetime/mod.js"
+    },
+    "./node": {
+      "types": "./dist/src/node/mod.d.ts",
+      "import": "./dist/src/node/mod.js"
     }
   },
   "files": [
@@ -20,15 +27,23 @@
   ],
   "scripts": {
     "format": "deno fmt --check",
+    "format:check": "deno fmt --check",
     "format:write": "deno fmt",
     "lint": "deno lint",
-    "typecheck": "deno check mod.ts examples/*/mod.ts",
-    "test": "deno test",
+    "typecheck": "npm run typecheck:portable && npm run typecheck:node",
+    "typecheck:portable": "deno check mod.ts examples/*/mod.ts scripts/*.ts",
+    "typecheck:node": "tsc -p tsconfig.node-test.json --noEmit",
+    "test": "npm run test:deno && npm run test:node",
+    "test:deno": "deno test src/lifetime src/web",
+    "test:node": "npm run build:test-node && node --test --test-concurrency=1 .tmp/node-tests/test/node/*.test.js",
+    "build:test-node": "tsc -p tsconfig.node-test.json",
     "build": "tsc -p tsconfig.build.json && deno run --allow-read=dist --allow-write=dist scripts/rewrite-declarations.ts",
-    "check:package": "tsc --ignoreConfig --noEmit --strict --noUncheckedIndexedAccess --target ES2022 --module NodeNext --moduleResolution NodeNext --lib ES2022,DOM,ESNext.Disposable scripts/package-smoke.ts",
+    "check:package": "tsc --ignoreConfig --noEmit --strict --noUncheckedIndexedAccess --target ES2022 --module NodeNext --moduleResolution NodeNext --lib ES2022,DOM,ESNext.Disposable --types node scripts/package-smoke.ts",
+    "check:tarball": "node scripts/tarball-smoke.mjs",
     "pack:dry-run": "npm pack --dry-run"
   },
   "devDependencies": {
+    "@types/node": "^24.13.3",
     "typescript": "^7.0.2"
   }
 }

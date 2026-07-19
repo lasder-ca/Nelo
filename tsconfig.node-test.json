@@ -6,16 +6,13 @@
     "lib": ["ES2022", "ESNext.Disposable", "DOM"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
     "rootDir": ".",
-    "outDir": "dist",
+    "outDir": ".tmp/node-tests",
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": true,
-    "skipLibCheck": false,
-    "types": ["node"]
+    "types": ["node"],
+    "skipLibCheck": false
   },
-  "include": ["mod.ts", "src/**/*.ts"],
-  "exclude": ["**/*_test.ts", "dist"]
+  "include": ["src/**/*.ts", "test/node/**/*.ts"],
+  "exclude": ["src/**/*_test.ts", "dist", ".tmp"]
 }

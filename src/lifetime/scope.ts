@@ -1,5 +1,6 @@
 import {
   type CancellationReason,
+  cancellationReasonFromSignal,
   isCancellationAcknowledgement,
   LifetimeCancelledError,
 } from "./cancellation.ts";
@@ -53,7 +54,11 @@ export class LifetimeScope implements TaskOwner {
     if (options.signal !== undefined) {
       this.#followSignal(
         options.signal,
-        () => this.cancel(options.signalReason ?? { type: "client_disconnect" }),
+        () =>
+          this.cancel(
+            options.signalReason ??
+              cancellationReasonFromSignal(options.signal!, { type: "client_disconnect" }),
+          ),
       );
     }
   }

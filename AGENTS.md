@@ -153,7 +153,7 @@ The initial core includes:
 - task ownership,
 - resource ownership,
 - response-delivery tracking,
-- deferred-work abstraction,
+- a future deferred-work abstraction,
 - adapter interface,
 - testing utilities.
 
@@ -205,10 +205,10 @@ Examples:
 - audit-log transmission,
 - non-critical notification.
 
-Adapters map this abstraction to their native mechanism:
+Future adapters may map this abstraction to a native mechanism:
 
 - Cloudflare Workers: `waitUntil`,
-- Node.js: tracked background registry participating in graceful shutdown,
+- Node.js: not implemented; `nodeCapabilities.deferredWork` is `unavailable`,
 - tests: deterministic task tracking and failure reporting.
 
 Deferred work is best-effort unless a future durable adapter explicitly provides stronger semantics.
@@ -351,13 +351,14 @@ type CancellationReason =
 
 ```ts
 app.get("/events", async (c) => {
-  return c.stream(async (stream) => {
-    const subscription = await c.use("events", (signal) => events.subscribe({ signal }));
-
-    for await (const event of subscription) {
-      await stream.write(event);
-    }
-  });
+  return new Response(new ReadableStream({
+    pull(controller) {
+      controller.enqueue(nextEvent());
+    },
+    cancel(reason) {
+      releaseDeliveryResource(reason);
+    },
+  }));
 });
 ```
 
@@ -465,7 +466,8 @@ Before building the router, create executable experiments for:
 - cancellation during resource acquisition,
 - cancellation during response streaming.
 
-Record findings in `docs/adr/0001-runtime-observability.md`.
+Record runtime findings in adapter lifecycle ADRs such as
+`docs/adr/0003-node-adapter-lifecycle.md`.
 
 No public API is considered stable before these experiments.
 
@@ -500,15 +502,16 @@ Do not optimize router performance before semantic correctness.
 
 ### Phase 3 — Node adapter
 
-Implement:
+Implemented and covered with real loopback socket tests:
 
 - Web Standard request conversion,
 - disconnect signal,
 - response-body delivery tracking,
 - graceful shutdown registry,
-- Deferred Scope registry,
 - streaming backpressure,
 - integration tests with real sockets.
+
+Deferred Work remains unavailable until an explicit ownership-transfer design is approved.
 
 ### Phase 4 — Cloudflare adapter
 
@@ -720,12 +723,14 @@ A change is complete only when:
 Assume WSL Ubuntu 26.04 for local development.
 
 ```bash
-corepack enable
-pnpm install
-pnpm typecheck
-pnpm test
-pnpm lint
-pnpm build
+npm ci
+npm run format
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run check:package
+npm run check:tarball
 ```
 
 Use workspace scripts rather than entering individual package directories unless diagnosing a
@@ -761,7 +766,7 @@ The integration test must:
 5. verify request resources are released,
 6. verify no owned task remains after shutdown.
 
-Then implement:
+The deferred-work vertical slice remains a future phase and must not be presented as implemented:
 
 ```ts
 app.post("/event", async (c) => {

@@ -89,6 +89,21 @@ Deno.test("the first cancellation reason is preserved across repeated requests",
   assertEquals(taskReason, first);
 });
 
+Deno.test("an external typed cancellation reason is preserved", async () => {
+  const controller = new AbortController();
+  const scope = new LifetimeScope({ signal: controller.signal });
+  const execution = scope.execute(async (current) => {
+    await current.fork("shutdown-aware", (signal) => waitForAbort(signal));
+  });
+  await Promise.resolve();
+  controller.abort({ type: "server_shutdown" });
+
+  const error = await assertRejects(() => execution);
+  assertInstanceOf(error, LifetimeCancelledError);
+  assertEquals(error.reason, { type: "server_shutdown" });
+  assertEquals(scope.cancellationReason, { type: "server_shutdown" });
+});
+
 Deno.test("closing state remains observable while joined work settles", async () => {
   const scope = new LifetimeScope();
   let release!: () => void;
