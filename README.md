@@ -1,9 +1,14 @@
 <p align="center">
-  <img src="./assets/nelo-wordmark.png" alt="Nelo — Every request owns its work." width="640">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/nelo-wordmark-on-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/nelo-wordmark-on-light.svg">
+    <img src="./assets/nelo-wordmark-on-light.svg" alt="Nelo — Every request owns its work." width="560">
+  </picture>
 </p>
 
 <p align="center">
-  <strong>A request-ownership runtime and Web Standards framework for TypeScript.</strong>
+  <strong>A request-ownership runtime and Web Standards framework for TypeScript.</strong><br>
+  <sub>Structured ownership for child tasks, cancellation, and scoped resources.</sub>
 </p>
 
 <p align="center">
