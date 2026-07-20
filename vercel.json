@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "node --version",
-  "buildCommand": "node build-site.mjs && node site/build.mjs",
+  "buildCommand": "node build-site.mjs && node site/build.mjs && node site/polish.mjs",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false,
