@@ -8,4 +8,18 @@ app.get("/smoke/:id", (context: NeloContext) => {
   return task.then((id) => context.json({ id }));
 });
 
+app.get("/stream", async (context: NeloContext) => {
+  const resource = await context.delivery.use(
+    "typed-delivery-resource",
+    () => ({ open: true }),
+    (value) => {
+      value.open = false;
+    },
+  );
+  context.delivery.use(() => {
+    resource.open = false;
+  });
+  return new Response(new Uint8Array([1, 2, 3]));
+});
+
 export const server: NeloNodeServer = serve(app, { port: 0 });

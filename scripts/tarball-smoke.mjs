@@ -45,7 +45,22 @@ try {
 import { serve } from "nelo/node";
 
 const app = new Nelo();
+let resourceOpen = true;
+let cleanups = 0;
 app.get("/", (context) => context.text("tarball-ok"));
+app.get("/stream", (context) => {
+  context.delivery.use(() => {
+    resourceOpen = false;
+    cleanups++;
+  });
+  return new Response(new ReadableStream({
+    pull(controller) {
+      if (!resourceOpen) throw new Error("delivery resource closed before streaming");
+      controller.enqueue(new TextEncoder().encode("stream-ok"));
+      controller.close();
+    },
+  }));
+});
 const server = serve(app, { port: 0 });
 
 try {
@@ -53,6 +68,10 @@ try {
   const response = await fetch(\`http://\${address.hostname}:\${address.port}/\`);
   if (response.status !== 200 || await response.text() !== "tarball-ok") {
     throw new Error("tarball response mismatch");
+  }
+  const streamed = await fetch(\`http://\${address.hostname}:\${address.port}/stream\`);
+  if (await streamed.text() !== "stream-ok" || resourceOpen || cleanups !== 1) {
+    throw new Error("tarball delivery lifetime mismatch");
   }
 } finally {
   await server.close({ gracePeriod: 100, forceAfter: 1_000 });

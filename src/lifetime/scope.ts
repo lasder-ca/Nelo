@@ -15,6 +15,8 @@ export interface LifetimeScopeOptions {
   readonly parent?: LifetimeScope;
   readonly signal?: AbortSignal;
   readonly signalReason?: CancellationReason;
+  readonly taskSettleTimeout?: number;
+  readonly onCleanupFailure?: (error: unknown) => void;
 }
 
 export interface LifetimeScopeSnapshot {
@@ -31,7 +33,7 @@ export class LifetimeScope implements TaskOwner {
   readonly #controller = new AbortController();
   readonly #tasks: OwnedTask<unknown>[] = [];
   readonly #children = new Set<LifetimeScope>();
-  readonly #resources = new ResourceStack();
+  readonly #resources: ResourceStack;
   readonly #externalSignals: Array<readonly [AbortSignal, () => void]> = [];
   #state: ScopeState = "open";
   #executed = false;
@@ -39,10 +41,21 @@ export class LifetimeScope implements TaskOwner {
 
   readonly name: string;
   readonly parent?: LifetimeScope;
+  readonly #taskSettleTimeout?: number;
+  readonly #onCleanupFailure?: (error: unknown) => void;
 
   constructor(options: LifetimeScopeOptions = {}) {
     this.name = options.name ?? "root";
     this.parent = options.parent;
+    const parentSettleTimeout = options.parent === undefined
+      ? undefined
+      : options.parent.#taskSettleTimeout;
+    this.#taskSettleTimeout = options.taskSettleTimeout ?? parentSettleTimeout;
+    const parentCleanupFailure = options.parent === undefined
+      ? undefined
+      : options.parent.#onCleanupFailure;
+    this.#onCleanupFailure = options.onCleanupFailure ?? parentCleanupFailure;
+    this.#resources = new ResourceStack(this.#onCleanupFailure);
     if (this.parent !== undefined) this.parent.#registerChild(this);
 
     if (this.parent !== undefined) {
@@ -93,7 +106,12 @@ export class LifetimeScope implements TaskOwner {
 
   createChild(name: string): LifetimeScope {
     this.#assertOpen("create a child scope");
-    return new LifetimeScope({ name, parent: this });
+    return new LifetimeScope({
+      name,
+      parent: this,
+      taskSettleTimeout: this.#taskSettleTimeout,
+      onCleanupFailure: this.#onCleanupFailure,
+    });
   }
 
   forkChild<T>(
@@ -200,7 +218,9 @@ export class LifetimeScope implements TaskOwner {
       this.cancel({ type: "manual", reason: error });
     }
 
-    await Promise.all(this.#tasks.map((task) => task.settled));
+    const taskSettlement = Promise.all(this.#tasks.map((task) => task.settled));
+    if (this.#taskSettleTimeout === undefined) await taskSettlement;
+    else await waitWithin(taskSettlement, this.#taskSettleTimeout);
     for (const task of this.#tasks) {
       if (task.state === "failed" && !failures.includes(task.failure)) failures.push(task.failure);
     }
@@ -249,6 +269,21 @@ export class LifetimeScope implements TaskOwner {
 
   #assertOpen(operation: string): void {
     if (this.#state !== "open" || this.signal.aborted) throw new ScopeClosedError(operation);
+  }
+}
+
+async function waitWithin(promise: Promise<unknown>, duration: number): Promise<boolean> {
+  if (duration === 0) return false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise.then(() => true),
+      new Promise<false>((resolve) => {
+        timer = setTimeout(() => resolve(false), duration);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 

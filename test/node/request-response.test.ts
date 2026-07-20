@@ -133,11 +133,21 @@ describe("Node request and response conversion", () => {
   });
 
   it("suppresses response bodies for HEAD, 204, and 304", async () => {
+    const terminalStates: string[] = [];
     const app = new Nelo();
     app.on("HEAD", "/head", () => new Response("hidden"));
     app.get("/empty", () => new Response(null, { status: 204 }));
     app.get("/cached", () => new Response(null, { status: 304 }));
-    const server = serve(app, { port: 0 });
+    const server = serve(app, {
+      port: 0,
+      diagnostics: {
+        onRequestDiagnostics(snapshot) {
+          if (["completed", "aborted", "failed"].includes(snapshot.state)) {
+            terminalStates.push(snapshot.state);
+          }
+        },
+      },
+    });
     try {
       const address = await server.listen();
       const head = await httpRequest(address, { method: "HEAD", path: "/head" });
@@ -146,6 +156,7 @@ describe("Node request and response conversion", () => {
       assert.equal(head.body.length, 0);
       assert.equal(empty.body.length, 0);
       assert.equal(cached.body.length, 0);
+      assert.deepEqual(terminalStates, ["completed", "completed", "completed"]);
     } finally {
       await closeServer(server);
     }

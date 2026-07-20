@@ -30,6 +30,21 @@ request bodies use Node's stream bridge with `duplex: "half"`.
 Response bodies are read incrementally. The adapter waits for `drain` after Node signals
 backpressure, preserves separate `Set-Cookie` values, and suppresses bodies for HEAD, 204, and 304.
 
+Handler resources registered with `context.use()` close before `app.fetch()` returns. Resources used
+by a response producer must be delivery-owned:
+
+```ts
+app.get("/export", async (context) => {
+  const database = await openDatabase();
+  context.delivery.use(() => database.close());
+  return new Response(createStreamFromDatabase(database));
+});
+```
+
+Delivery cleanup runs exactly once in LIFO order after normal body completion, cancellation,
+producer failure, client disconnect, or shutdown. `context.delivery.fork()` receives the delivery
+signal. Cancellation is cooperative; a promise that ignores that signal cannot be forcibly stopped.
+
 Optional diagnostics report immutable delivery results and failures:
 
 ```ts
@@ -41,11 +56,16 @@ const server = serve(app, {
     onError(error) {
       console.error(error);
     },
+    onRequestDiagnostics(snapshot) {
+      console.log(snapshot.state, snapshot.deliveryResources);
+    },
   },
 });
 ```
 
-Delivery result `finished` is Node's local `finish`, not remote-client receipt confirmation.
+Delivery result `finished` is Node's local `finish`, not remote-client receipt confirmation. Request
+diagnostics report state, task and resource counts, the first abort reason, cleanup failures,
+pending tasks, and bounded forced termination. Callbacks are observational.
 
 ## Shutdown
 
@@ -60,3 +80,6 @@ await server.closed;
 `forceAfter` is measured from the start of shutdown and must be at least `gracePeriod`. At grace
 expiry active exchange signals receive `server_shutdown`; at the hard deadline remaining sockets are
 destroyed. Nelo never calls `process.exit()` and installs no global signal handlers.
+
+The hard deadline can close a socket, but it cannot terminate arbitrary JavaScript promises. Nelo
+records work still pending after its bounded settlement wait and proceeds with cleanup.

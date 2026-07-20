@@ -1,3 +1,4 @@
+import type { DeliveryContext } from "../lifetime/request-lifetime.ts";
 import type { RequestScope } from "../lifetime/scope.ts";
 import type { OwnedTask } from "../lifetime/task.ts";
 import type { NeloContext } from "./types.ts";
@@ -9,6 +10,7 @@ export class RequestContext implements NeloContext {
   constructor(
     readonly req: Request,
     scope: RequestScope,
+    readonly delivery: DeliveryContext,
     params: Readonly<Record<string, string>>,
   ) {
     this.#scope = scope;

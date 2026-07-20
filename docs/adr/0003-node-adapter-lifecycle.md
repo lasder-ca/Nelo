@@ -26,8 +26,8 @@ The Request Scope owns middleware, handler tasks, and `c.use()` resources. Those
 when `app.fetch()` settles. After that ownership boundary, the adapter owns only the returned
 `Response.body` reader as delivery work. It reads one chunk at a time, waits for Node's `drain`
 event when `ServerResponse.write()` returns `false`, and cancels the reader on disconnect or
-shutdown. Delivery-specific resources belong to the stream producer and must be released by its
-close, error, or `cancel()` path.
+shutdown. Delivery-specific resources are registered with `c.delivery.use()` and released by the
+portable Delivery Scope. ADR 0004 replaces the earlier producer-only cleanup requirement.
 
 Delivery uses these states:
 

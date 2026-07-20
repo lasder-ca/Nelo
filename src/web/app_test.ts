@@ -1,4 +1,11 @@
-import { assert, assertEquals, assertMatch, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertInstanceOf,
+  assertMatch,
+  assertRejects,
+  assertThrows,
+} from "@std/assert";
 import { Nelo } from "../../mod.ts";
 import { DuplicateRouteError } from "./errors.ts";
 
@@ -229,6 +236,158 @@ Deno.test("production errors contain a diagnostic code without stack details", a
   assertEquals(response.status, 500);
   assertEquals(body, "NELO_SCOPE_999: request failed");
   assert(!body.includes("private detail"));
+});
+
+Deno.test("handler and delivery resources have separate cleanup lifetimes", async () => {
+  const events: string[] = [];
+  const app = new Nelo();
+  app.get("/stream", async (context) => {
+    await context.use("handler", () => ({ open: true }), () => {
+      events.push("handler");
+    });
+    context.delivery.use(() => {
+      events.push("delivery");
+    });
+    return new Response("body");
+  });
+
+  const response = await app.fetch(new Request("https://example.test/stream"));
+  assertEquals(events, ["handler"]);
+  assertEquals(await response.text(), "body");
+  assertEquals(events, ["handler", "delivery"]);
+});
+
+Deno.test("delivery resources clean up in LIFO order after the body closes", async () => {
+  const events: string[] = [];
+  const app = new Nelo();
+  app.get("/", (context) => {
+    context.delivery.use(() => {
+      events.push("first");
+    });
+    context.delivery.use(() => {
+      events.push("second");
+    });
+    return new Response(new ReadableStream({ start: (controller) => controller.close() }));
+  });
+
+  const response = await app.fetch(new Request("https://example.test/"));
+  assertEquals(events, []);
+  await response.arrayBuffer();
+  assertEquals(events, ["second", "first"]);
+});
+
+Deno.test("body-less responses close delivery resources without leaking", async () => {
+  let cleanups = 0;
+  const states: string[] = [];
+  const app = new Nelo({ diagnostics: (snapshot) => states.push(snapshot.state) });
+  app.get("/", (context) => {
+    context.delivery.use(() => {
+      cleanups++;
+    });
+    return new Response(null, { status: 204 });
+  });
+
+  const response = await app.fetch(new Request("https://example.test/"));
+  assertEquals(response.status, 204);
+  assertEquals(cleanups, 1);
+  assertEquals(states.at(-1), "completed");
+});
+
+Deno.test("delivery cleanup failures are aggregated after every cleanup runs", async () => {
+  const first = new Error("first cleanup");
+  const second = new Error("second cleanup");
+  const events: string[] = [];
+  const snapshots: import("../lifetime/request-lifetime.ts").RequestDiagnostics[] = [];
+  const app = new Nelo({ diagnostics: (snapshot) => snapshots.push(snapshot) });
+  app.get("/", (context) => {
+    context.delivery.use(() => {
+      events.push("first");
+      throw first;
+    });
+    context.delivery.use(() => {
+      events.push("second");
+      throw second;
+    });
+    return new Response("body");
+  });
+
+  const response = await app.fetch(new Request("https://example.test/"));
+  const error = await assertRejects(() => response.text());
+  assertInstanceOf(error, AggregateError);
+  assertEquals(error.errors, [second, first]);
+  assertEquals(events, ["second", "first"]);
+  assertEquals(snapshots.at(-1)?.cleanupFailures, [
+    { phase: "delivery", error: second },
+    { phase: "delivery", error: first },
+  ]);
+});
+
+Deno.test("request abort propagates to delivery tasks and closes delivery resources", async () => {
+  const controller = new AbortController();
+  let receivedReason: unknown;
+  let started!: () => void;
+  const taskStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let cleaned!: () => void;
+  const cleanup = new Promise<void>((resolve) => {
+    cleaned = resolve;
+  });
+  const app = new Nelo();
+  app.get("/", (context) => {
+    const task = context.delivery.fork("producer", (signal) => {
+      started();
+      return new Promise<never>((_resolve, reject) => {
+        signal.addEventListener("abort", () => {
+          receivedReason = signal.reason;
+          reject(signal.reason);
+        }, { once: true });
+      });
+    });
+    context.delivery.use(() => {
+      cleaned();
+    });
+    return new Response(
+      new ReadableStream({
+        async pull(stream) {
+          await task;
+          stream.close();
+        },
+      }),
+    );
+  });
+
+  const response = await app.fetch(
+    new Request("https://example.test/", {
+      signal: controller.signal,
+    }),
+  );
+  const body = response.text();
+  await taskStarted;
+  const reason = { type: "server_shutdown" } as const;
+  controller.abort(reason);
+  await assertRejects(() => body);
+  await cleanup;
+  assertEquals(receivedReason, reason);
+});
+
+Deno.test("diagnostics retain pending tasks after bounded forced termination", async () => {
+  const snapshots: import("../lifetime/request-lifetime.ts").RequestDiagnostics[] = [];
+  const app = new Nelo({
+    taskSettleTimeout: 0,
+    diagnostics: (snapshot) => snapshots.push(snapshot),
+  });
+  app.get("/", (context) => {
+    context.delivery.fork("ignores-abort", () => new Promise(() => undefined));
+    return new Response("body");
+  });
+
+  const response = await app.fetch(new Request("https://example.test/"));
+  await assertRejects(() => response.text());
+  const final = snapshots.at(-1)!;
+  assertEquals(final.state, "failed");
+  assertEquals(final.pendingDeliveryTasks, 1);
+  assertEquals(final.forcedTermination, true);
 });
 
 function waitForAbort(signal: AbortSignal, received: string[], name: string): Promise<never> {

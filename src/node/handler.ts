@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { type RequestDiagnosticsListener, responseLifetime } from "../lifetime/request-lifetime.ts";
 import { monitorDisconnect } from "./disconnect.ts";
 import { type NodeDeliveryHooks, type NodeDeliveryResult, writeNodeResponse } from "./delivery.ts";
 import { MalformedNodeRequestError } from "./errors.ts";
@@ -11,6 +12,7 @@ export interface FetchApplication {
 export interface NodeAdapterDiagnostics {
   readonly onDelivery?: (result: NodeDeliveryResult) => void;
   readonly onError?: (error: unknown) => void;
+  readonly onRequestDiagnostics?: RequestDiagnosticsListener;
 }
 
 export interface NodeExchangeHooks extends NodeDeliveryHooks, NodeAdapterDiagnostics {}
@@ -42,6 +44,10 @@ export async function handleNodeExchange(
     }
 
     const webResponse = await app.fetch(webRequest);
+    const lifetime = responseLifetime(webResponse);
+    const unsubscribe = hooks.onRequestDiagnostics === undefined
+      ? undefined
+      : lifetime?.subscribe(hooks.onRequestDiagnostics);
     const result = await writeNodeResponse(
       webRequest.method,
       webResponse,
@@ -51,6 +57,7 @@ export async function handleNodeExchange(
     );
     reportDelivery(hooks, result);
     if (result.state === "failed" && result.error !== undefined) reportError(hooks, result.error);
+    unsubscribe?.();
     return result;
   } catch (error) {
     reportError(hooks, error);

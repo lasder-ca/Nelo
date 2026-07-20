@@ -1,6 +1,7 @@
 import type { ServerResponse } from "node:http";
 import type { CancellationReason } from "../lifetime/cancellation.ts";
 import { isCancellationReason } from "../lifetime/cancellation.ts";
+import { discardOwnedResponseBody } from "../lifetime/request-lifetime.ts";
 import { NodeDeliveryError } from "./errors.ts";
 
 export type NodeDeliveryState =
@@ -40,7 +41,7 @@ export async function writeNodeResponse(
     const suppressBody = method === "HEAD" || webResponse.status === 204 ||
       webResponse.status === 304;
     if (suppressBody || webResponse.body === null) {
-      if (webResponse.body !== null) await webResponse.body.cancel();
+      if (webResponse.body !== null) await discardOwnedResponseBody(webResponse);
       nodeResponse.end();
       await waitForFinish(nodeResponse, signal);
       return { state: "finished" };

@@ -13,6 +13,10 @@ export function monitorDisconnect(
 ): DisconnectMonitor {
   const socket: Socket = request.socket;
   const disconnect = (): void => abortOnce(controller, { type: "client_disconnect" });
+  const requestError = (error: Error): void =>
+    abortOnce(controller, { type: "request_error", error });
+  const deliveryError = (error: Error): void =>
+    abortOnce(controller, { type: "delivery_error", error });
   const onRequestClose = (): void => {
     if (!request.complete) disconnect();
   };
@@ -24,18 +28,18 @@ export function monitorDisconnect(
   };
 
   request.on("aborted", disconnect);
-  request.on("error", disconnect);
+  request.on("error", requestError);
   request.on("close", onRequestClose);
-  response.on("error", disconnect);
+  response.on("error", deliveryError);
   response.on("close", onResponseClose);
   socket.on("close", onSocketClose);
 
   return {
     dispose() {
       request.off("aborted", disconnect);
-      request.off("error", disconnect);
+      request.off("error", requestError);
       request.off("close", onRequestClose);
-      response.off("error", disconnect);
+      response.off("error", deliveryError);
       response.off("close", onResponseClose);
       socket.off("close", onSocketClose);
     },

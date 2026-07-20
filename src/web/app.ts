@@ -1,5 +1,5 @@
 import { diagnosticCode, InvalidResponseError } from "../lifetime/errors.ts";
-import { RequestScope } from "../lifetime/scope.ts";
+import { ownResponseDelivery, RequestLifetime } from "../lifetime/request-lifetime.ts";
 import { MalformedPathError } from "./errors.ts";
 import { RequestContext } from "./context.ts";
 import { runMiddleware } from "./middleware.ts";
@@ -19,10 +19,14 @@ export class Nelo {
   readonly #middleware: NeloMiddleware[] = [];
   readonly #mode: NonNullable<NeloOptions["mode"]>;
   readonly #onError: NeloErrorHandler;
+  readonly #diagnostics?: NeloOptions["diagnostics"];
+  readonly #taskSettleTimeout: number;
 
   constructor(options: NeloOptions = {}) {
     this.#mode = options.mode ?? "production";
     this.#onError = options.onError ?? ((error) => this.#defaultErrorHandler(error));
+    this.#diagnostics = options.diagnostics;
+    this.#taskSettleTimeout = options.taskSettleTimeout ?? 1_000;
   }
 
   use(middleware: NeloMiddleware): this {
@@ -59,17 +63,19 @@ export class Nelo {
   }
 
   async fetch(request: Request): Promise<Response> {
-    const scope = new RequestScope({ signal: request.signal });
-    let context: NeloContext = new RequestContext(request, scope, {});
+    const lifetime = new RequestLifetime(request.signal, this.#taskSettleTimeout);
+    this.#diagnostics !== undefined && lifetime.subscribe(this.#diagnostics);
+    const scope = lifetime.handler;
+    let context: NeloContext = new RequestContext(request, scope, lifetime.delivery, {});
 
     try {
-      return await scope.execute(async () => {
+      const response = await scope.execute(async () => {
         const match = this.#router.match(request.method, new URL(request.url).pathname);
         let handler: NeloHandler;
         let routeMiddleware: readonly NeloMiddleware[] = [];
 
         if (match.type === "match") {
-          context = new RequestContext(request, scope, match.params);
+          context = new RequestContext(request, scope, lifetime.delivery, match.params);
           routeMiddleware = match.middleware;
           handler = match.handler;
         } else if (match.type === "method_not_allowed") {
@@ -90,14 +96,18 @@ export class Nelo {
         if (!(response instanceof Response)) throw new InvalidResponseError();
         return response;
       });
+      return await ownResponseDelivery(response, lifetime);
     } catch (error) {
       try {
         const response = await this.#onError(error, context);
-        return response instanceof Response ? response : this.#defaultErrorHandler(
-          new InvalidResponseError(),
-        );
+        const boundaryResponse = response instanceof Response
+          ? response
+          : this.#defaultErrorHandler(
+            new InvalidResponseError(),
+          );
+        return await ownResponseDelivery(boundaryResponse, lifetime);
       } catch (boundaryError) {
-        return this.#defaultErrorHandler(boundaryError);
+        return await ownResponseDelivery(this.#defaultErrorHandler(boundaryError), lifetime);
       }
     }
   }
