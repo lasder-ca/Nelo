@@ -13,6 +13,8 @@ export class ResourceStack {
   readonly #entries: ResourceEntry[] = [];
   #disposed = false;
 
+  constructor(readonly onFailure?: (error: unknown) => void) {}
+
   get size(): number {
     return this.#entries.length;
   }
@@ -46,6 +48,11 @@ export class ResourceStack {
         await entry.cleanup();
       } catch (error) {
         failures.push(error);
+        try {
+          this.onFailure?.(error);
+        } catch {
+          // Failure observers cannot interrupt the remaining LIFO cleanup.
+        }
       }
     }
     this.#entries.length = 0;

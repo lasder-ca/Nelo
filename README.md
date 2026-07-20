@@ -13,7 +13,7 @@
 
 <p align="center">
   <img alt="Status: experimental" src="https://img.shields.io/badge/status-experimental-6d7178">
-  <img alt="Phase 2 complete" src="https://img.shields.io/badge/core-phase%202%20complete-2864dc">
+  <img alt="Phase 4 complete" src="https://img.shields.io/badge/core-phase%204%20complete-2864dc">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6">
   <a href="./LICENSE"><img alt="Apache-2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-5bc8ad"></a>
 </p>
@@ -26,19 +26,16 @@ explicit lifetime boundary.
 
 ## Why Nelo
 
-Returning a `Response` does not necessarily mean that all request-related work has finished.
-A handler can leave tasks running, lose cancellation when a client disconnects, or keep resources
+Returning a `Response` does not necessarily mean that all request-related work has finished. A
+handler can leave tasks running, lose cancellation when a client disconnects, or keep resources
 alive longer than the request that created them.
 
-Nelo structures that work as one ownership tree:
+Nelo structures that work as explicit handler and delivery ownership scopes:
 
 ```text
-RequestScope
-├── OwnedTask: user
-├── OwnedTask: feed
-├── Resource: database
-└── Child LifetimeScope
-    └── OwnedTask: audit
+Request Lifetime
+├── Handler Scope: middleware, c.fork(), c.use()
+└── Delivery Scope: Response.body, c.delivery.fork(), c.delivery.use()
 ```
 
 When the scope closes, Nelo checks owned tasks, propagates cooperative cancellation, waits for
@@ -56,13 +53,9 @@ import { Nelo } from "nelo";
 const app = new Nelo();
 
 app.get("/users/:id", async (context) => {
-  const user = context.fork("user", (signal) =>
-    fetchUser(context.params.id!, { signal })
-  );
+  const user = context.fork("user", (signal) => fetchUser(context.params.id!, { signal }));
 
-  const feed = context.fork("feed", (signal) =>
-    fetchFeed(context.params.id!, { signal })
-  );
+  const feed = context.fork("feed", (signal) => fetchFeed(context.params.id!, { signal }));
 
   return context.json({
     user: await user,
@@ -80,13 +73,15 @@ types. Runtime-specific behavior belongs in adapters rather than application han
 
 ## Core primitives
 
-| Primitive | Purpose |
-| --- | --- |
-| `app.fetch(request)` | Runs routing, middleware, and the handler in one `RequestScope`. |
-| `context.fork(name, operation)` | Starts an eager `OwnedTask` bound to the current request. |
-| `context.signal` | Exposes cooperative cancellation to request-owned work. |
-| `context.use(name, acquire, cleanup?)` | Acquires a resource and releases it once in LIFO order. |
-| `LifetimeScope#createChild(name)` | Creates an explicit child ownership boundary. |
+| Primitive                                | Purpose                                                         |
+| ---------------------------------------- | --------------------------------------------------------------- |
+| `app.fetch(request)`                     | Runs routing, middleware, the handler, and owned body delivery. |
+| `context.fork(name, operation)`          | Starts an eager `OwnedTask` bound to the current request.       |
+| `context.signal`                         | Exposes cooperative cancellation to request-owned work.         |
+| `context.use(name, acquire, cleanup?)`   | Acquires a resource and releases it once in LIFO order.         |
+| `context.delivery.use(cleanup)`          | Keeps a resource alive until response-body delivery ends.       |
+| `context.delivery.fork(name, operation)` | Starts work owned by response delivery.                         |
+| `LifetimeScope#createChild(name)`        | Creates an explicit child ownership boundary.                   |
 
 ### Owned tasks
 
@@ -94,15 +89,13 @@ types. Runtime-specific behavior belongs in adapters rather than application han
 name, ancestry, settlement state, and failure for diagnostics.
 
 ```ts
-const profile = context.fork("profile", (signal) =>
-  loadProfile({ signal })
-);
+const profile = context.fork("profile", (signal) => loadProfile({ signal }));
 
 return context.json(await profile);
 ```
 
-If a task is neither observed nor explicitly transferred before its scope completes, Nelo cancels
-it and reports `NELO_TASK_001` instead of silently accepting a floating promise.
+If a task is neither observed nor explicitly transferred before its scope completes, Nelo cancels it
+and reports `NELO_TASK_001` instead of silently accepting a floating promise.
 
 ### Cooperative cancellation
 
@@ -114,8 +107,8 @@ must observe the supplied signal and stop safely.
 
 ### Scoped resources
 
-Resources implementing `Symbol.asyncDispose` or `Symbol.dispose` can be registered directly.
-Other values require an explicit cleanup callback.
+Resources implementing `Symbol.asyncDispose` or `Symbol.dispose` can be registered directly. Other
+values require an explicit cleanup callback.
 
 ```ts
 const connection = await context.use(
@@ -125,12 +118,29 @@ const connection = await context.use(
 );
 ```
 
-Resources are released once, in reverse acquisition order, after owned work settles. Handler,
-task, and cleanup failures remain observable and are aggregated when necessary.
+Resources are released once, in reverse acquisition order, after owned work settles. Handler, task,
+and cleanup failures remain observable and are aggregated when necessary.
+
+### Delivery-owned resources
+
+`context.use()` remains handler-owned and is cleaned when the handler returns. A stream producer
+that needs a resource after that point must register its cleanup with `context.delivery.use()`.
+
+```ts
+app.get("/stream", async (context) => {
+  const resource = await openResource();
+  context.delivery.use(() => resource.close());
+  return new Response(resource.stream());
+});
+```
+
+The Delivery Scope closes after body completion, cancellation, producer error, client disconnect, or
+server shutdown. Cleanup is exactly once and LIFO. The first typed `NeloAbortReason` is retained.
+Diagnostics expose immutable `handling`, `delivering`, and terminal snapshots.
 
 ## Web framework surface
 
-Phase 2 currently includes:
+The current portable surface includes:
 
 - standard Fetch-style `app.fetch(Request)` execution;
 - static routes and named path parameters;
@@ -139,7 +149,9 @@ Phase 2 currently includes:
 - global and route middleware;
 - single-use middleware `next()` enforcement;
 - centralized and customizable error handling;
-- `json`, `text`, `fork`, and `use` context helpers.
+- `json`, `text`, `fork`, `use`, and `delivery` context helpers;
+- bounded settlement diagnostics for tasks that ignore cancellation;
+- handler- and delivery-phase cleanup failure reporting.
 
 ```ts
 app.use(async (_context, next) => {
@@ -157,26 +169,24 @@ Semantically duplicate parameter routes are rejected, including `/users/:id` fol
 
 ## Runtime capabilities
 
-| Capability | Portable core | Node.js | Cloudflare | Deno | Bun |
-| --- | :---: | :---: | :---: | :---: | :---: |
-| Request scopes | ✅ | — | — | ✅ | — |
-| Owned tasks | ✅ | — | — | ✅ | — |
-| Resource cleanup | ✅ | — | — | ✅ | — |
-| Client disconnect integration | — | Phase 3 | Planned | Planned | Planned |
-| Response delivery tracking | — | Phase 3 | Planned | Planned | Planned |
-| Graceful shutdown | — | Phase 3 | Planned | Planned | Planned |
-| Deferred work | — | Planned | Planned | Planned | Planned |
+| Capability                    | Portable core | Node.js | Cloudflare |  Deno   |   Bun   |
+| ----------------------------- | :-----------: | :-----: | :--------: | :-----: | :-----: |
+| Request scopes                |      ✅       |    —    |     —      |   ✅    |    —    |
+| Owned tasks                   |      ✅       |    —    |     —      |   ✅    |    —    |
+| Resource cleanup              |      ✅       |    —    |     —      |   ✅    |    —    |
+| Client disconnect integration |       —       |   ✅    |  Planned   | Planned | Planned |
+| Response delivery tracking    |      ✅       |   ✅    |  Planned   | Planned | Planned |
+| Graceful shutdown             |       —       |   ✅    |  Planned   | Planned | Planned |
+| Deferred work                 |       —       | Planned |  Planned   | Planned | Planned |
 
-The portable core runs in hosts that provide Web Standards, with Deno used for the current test
-suite. Phase 2 closes a request scope before returning a normal response; it does not claim portable
-response-delivery tracking.
+The portable core wraps `Response.body` to close Delivery Scope at the observable body boundary. The
+Node adapter additionally maps transport disconnect, backpressure, and shutdown into that model.
 
 ## What Nelo does not claim yet
 
 - forced cancellation of arbitrary promises;
 - confirmation that a client physically received every response byte;
 - durable or exactly-once background execution;
-- production-ready Node.js disconnect handling;
 - complete Cloudflare, Deno, or Bun runtime adapters.
 
 These boundaries are intentional. Runtime behavior will only be documented as supported after the
@@ -222,15 +232,17 @@ npm run check:package
 npm --cache /tmp/nelo-npm-cache pack --dry-run
 ```
 
-The current package name is `nelo`. The repository import map also accepts
-`@latteworkspace/nelo` as the preferred scoped fallback. Neither package is published yet.
+The current package name is `nelo`. The repository import map also accepts `@latteworkspace/nelo` as
+the preferred scoped fallback. Neither package is published yet.
 
 ## Roadmap
 
 - **Phase 1 — complete:** lifetime scopes, owned tasks, typed cancellation, resource cleanup.
 - **Phase 2 — complete:** Fetch-style application API, router, middleware, context, error boundary.
-- **Phase 3 — next:** Node.js adapter, real socket disconnect tests, delivery tracking, graceful
+- **Phase 3 — complete:** Node.js adapter, real socket disconnect tests, delivery tracking, graceful
   shutdown, and GitHub CI.
+- **Phase 4 — complete:** separate Handler/Delivery scopes, delivery-owned resources and tasks,
+  typed abort reasons, cleanup-failure aggregation, and request diagnostics.
 - **Later:** Cloudflare, Deno, and Bun adapters; explicit deferred work; diagnostics tooling.
 
 ## License
