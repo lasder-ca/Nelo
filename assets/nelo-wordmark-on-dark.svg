@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="420" viewBox="0 0 1120 420" role="img" aria-labelledby="title desc"><title id="title">Nelo</title><desc id="desc">Nelo logo with the tagline Every request owns its work.</desc><defs><linearGradient id="blue" x1="58" y1="52" x2="150" y2="316" gradientUnits="userSpaceOnUse"><stop stop-color="#3183EA"/><stop offset="1" stop-color="#2368D0"/></linearGradient><linearGradient id="mint" x1="148" y1="72" x2="236" y2="316" gradientUnits="userSpaceOnUse"><stop stop-color="#6ED2BE"/><stop offset="1" stop-color="#4DB9A7"/></linearGradient><linearGradient id="navy" x1="88" y1="78" x2="230" y2="312" gradientUnits="userSpaceOnUse"><stop stop-color="#173E77"/><stop offset="1" stop-color="#102C58"/></linearGradient></defs><g transform="translate(24 18) scale(.92)"><path d="M86 52Q58 52 58 80V304Q58 329 79 315L148 260V121L104 77Q96 52 86 52Z" fill="url(#blue)"/><path d="M208 66L148 121V260L215 315Q236 329 236 304V80Q236 50 208 66Z" fill="url(#mint)"/><path d="M104 77L236 209V304Q236 329 215 315L58 158V80Q58 52 86 52Q96 52 104 77Z" fill="url(#navy)"/></g><text x="392" y="224" fill="#F7FAFC" font-family="Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="176" font-weight="650" letter-spacing="-9">Nelo</text><text x="398" y="294" fill="#A8B3C1" font-family="Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="39" font-weight="500" letter-spacing="-.4">Every request owns its work.</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="420" viewBox="0 0 1120 420" role="img" aria-labelledby="title desc">
+  <title id="title">Nelo</title>
+  <desc id="desc">Nelo logo with the tagline Every request owns its work.</desc>
+  <defs>
+    <linearGradient id="blue" x1="64" y1="50" x2="148" y2="306" gradientUnits="userSpaceOnUse"><stop stop-color="#3183EA"/><stop offset="1" stop-color="#2368D0"/></linearGradient>
+    <linearGradient id="mint" x1="223" y1="50" x2="304" y2="260" gradientUnits="userSpaceOnUse"><stop stop-color="#6ED2BE"/><stop offset="1" stop-color="#4DB9A7"/></linearGradient>
+    <linearGradient id="navy" x1="99" y1="65" x2="285" y2="311" gradientUnits="userSpaceOnUse"><stop stop-color="#173E77"/><stop offset="1" stop-color="#102C58"/></linearGradient>
+  </defs>
+  <path d="M83 50C72 50 64 58 64 70V292C64 307 79 315 91 306L148 262V114L99 65C95 56 90 50 83 50Z" fill="url(#blue)"/>
+  <path d="M285 50C296 50 304 56 304 68V260L223 180V101L273 59C277 53 281 50 285 50Z" fill="url(#mint)"/>
+  <path d="M99 65L304 260V285C304 301 294 311 278 311C267 311 260 307 253 300L148 207V114L99 65Z" fill="url(#navy)"/>
+  <text x="392" y="224" fill="#F7FAFC" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="176" font-weight="650" letter-spacing="-9">Nelo</text>
+  <text x="398" y="294" fill="#A8B3C1" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="39" font-weight="500" letter-spacing="-.4">Every request owns its work.</text>
+</svg>

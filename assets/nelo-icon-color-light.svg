@@ -1,1 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><title>Nelo color icon on light</title><rect x="38" y="32" width="436" height="436" rx="94" fill="#F8FAFC"/><g transform="translate(92 76) scale(1.12)"><path d="M86 52Q58 52 58 80V304Q58 329 79 315L148 260V121L104 77Q96 52 86 52Z" fill="#2B78E1"/><path d="M208 66L148 121V260L215 315Q236 329 236 304V80Q236 50 208 66Z" fill="#60C9B4"/><path d="M104 77L236 209V304Q236 329 215 315L58 158V80Q58 52 86 52Q96 52 104 77Z" fill="#143666"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Nelo color icon on light</title>
+  <rect x="38" y="32" width="436" height="436" rx="94" fill="#F8FAFC"/>
+  <g transform="translate(130 108) scale(1.05) translate(-64 -50)">
+    <path d="M83 50C72 50 64 58 64 70V292C64 307 79 315 91 306L148 262V114L99 65C95 56 90 50 83 50Z" fill="#2B78E1"/>
+    <path d="M285 50C296 50 304 56 304 68V260L223 180V101L273 59C277 53 281 50 285 50Z" fill="#60C9B4"/>
+    <path d="M99 65L304 260V285C304 301 294 311 278 311C267 311 260 307 253 300L148 207V114L99 65Z" fill="#143666"/>
+  </g>
+</svg>
