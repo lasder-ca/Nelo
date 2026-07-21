@@ -1,3 +1,4 @@
+import { Nelo } from "nelo";
 import { NextResponse } from "next/server";
 
 const scenarios = ["success", "disconnect", "failure"] as const;
@@ -5,6 +6,38 @@ type Scenario = (typeof scenarios)[number];
 
 function isScenario(value: unknown): value is Scenario {
   return typeof value === "string" && scenarios.includes(value as Scenario);
+}
+
+function buildTimeline(scenario: Scenario) {
+  const base = [
+    { phase: "handler", label: "route matched", status: "complete", at: 1 },
+    { phase: "handler", label: "user task settled", status: "complete", at: 8 },
+    { phase: "handler", label: "handler scope closed", status: "complete", at: 12 },
+    { phase: "delivery", label: "response body started", status: "complete", at: 14 },
+  ];
+
+  const terminal = scenario === "success"
+    ? [
+        { phase: "delivery", label: "producer task settled", status: "complete", at: 28 },
+        { phase: "delivery", label: "resources released (LIFO)", status: "complete", at: 31 },
+      ]
+    : scenario === "disconnect"
+      ? [
+          { phase: "delivery", label: "client disconnect propagated", status: "cancelled", at: 22 },
+          { phase: "delivery", label: "resources released (LIFO)", status: "complete", at: 25 },
+        ]
+      : [
+          { phase: "delivery", label: "producer task failed", status: "failed", at: 19 },
+          { phase: "delivery", label: "cleanup completed", status: "complete", at: 23 },
+        ];
+
+  return {
+    requestId: crypto.randomUUID().slice(0, 8),
+    scenario,
+    outcome: scenario === "success" ? "completed" : scenario === "disconnect" ? "aborted" : "failed",
+    duration: terminal.at(-1)?.at ?? 0,
+    events: [...base, ...terminal],
+  };
 }
 
 export async function POST(request: Request) {
@@ -22,33 +55,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "scenario must be success, disconnect, or failure." }, { status: 400 });
   }
 
-  const base = [
-    { phase: "handler", label: "route matched", status: "complete", at: 1 },
-    { phase: "handler", label: "user task settled", status: "complete", at: 8 },
-    { phase: "handler", label: "handler scope closed", status: "complete", at: 12 },
-    { phase: "delivery", label: "response body started", status: "complete", at: 14 },
-  ] as const;
+  const app = new Nelo();
+  app.get("/lifecycle", async (context) => {
+    const timeline = context.fork("website-lifecycle-demo", async (signal) => {
+      if (signal.aborted) throw signal.reason;
+      await Promise.resolve();
+      return buildTimeline(scenario);
+    });
 
-  const terminal = scenario === "success"
-    ? [
-        { phase: "delivery", label: "producer task settled", status: "complete", at: 28 },
-        { phase: "delivery", label: "resources released (LIFO)", status: "complete", at: 31 },
-      ]
-    : scenario === "disconnect"
-      ? [
-          { phase: "delivery", label: "client disconnect propagated", status: "cancelled", at: 22 },
-          { phase: "delivery", label: "resources released (LIFO)", status: "complete", at: 25 },
-        ]
-      : [
-          { phase: "delivery", label: "producer task failed", status: "failed", at: 19 },
-          { phase: "delivery", label: "cleanup completed", status: "complete", at: 23 },
-        ];
+    return context.json(await timeline);
+  });
 
-  return NextResponse.json({
-    requestId: crypto.randomUUID().slice(0, 8),
-    scenario,
-    outcome: scenario === "success" ? "completed" : scenario === "disconnect" ? "aborted" : "failed",
-    duration: terminal.at(-1)?.at ?? 0,
-    events: [...base, ...terminal],
+  const response = await app.fetch(new Request("https://nelo.lattee.jp/lifecycle"));
+  return new NextResponse(response.body, {
+    status: response.status,
+    headers: response.headers,
   });
 }

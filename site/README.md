@@ -1,1 +1,0 @@
-Source assets for the generated Nelo website.

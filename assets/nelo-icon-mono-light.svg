@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">Nelo monochrome icon on light</title>
-  <rect x="38" y="32" width="436" height="436" rx="94" fill="#F8FAFC"/>
-  <g transform="translate(130 108) scale(1.05) translate(-64 -50)" fill="#132B49" stroke="#132B49" stroke-width="1.5" stroke-linejoin="round">
-    <path d="M83 50C72 50 64 58 64 70V292C64 307 79 315 91 306L148 262V114L99 65C95 56 90 50 83 50Z"/>
-    <path d="M285 50C296 50 304 56 304 68V260L223 180V101L273 59C277 53 281 50 285 50Z"/>
-    <path d="M99 65L304 260V285C304 301 294 311 278 311C267 311 260 307 253 300L148 207V114L99 65Z"/>
-  </g>
-</svg>

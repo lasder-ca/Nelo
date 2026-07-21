@@ -1,15 +1,8 @@
-node_modules/
-dist/
-*.tgz
-.tmp/
-
-coverage/
+website/node_modules/
+website/.next/
+website/out/
+.vercel/
 .env
 .env.*
 !.env.example
 *.log
-# Dependencies
-# Build outputs
-# Environment files
-# npm package archives
-# Logs
