@@ -1,14 +1,84 @@
-import Link from "next/link"
-import { ArrowLeft, ArrowRight, BookOpen, Boxes, Code2, FileCode2, Map, ScrollText } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Boxes,
+  Code2,
+  FileCode2,
+  Map,
+  ScrollText,
+} from "lucide-react";
 
-const nav = [["Overview", "/docs"], ["Getting started", "/docs/getting-started"], ["Request ownership", "/docs/concepts/request-ownership"], ["Examples", "/examples"], ["Roadmap", "/roadmap"], ["Changelog", "/changelog"]]
-export function DocsShell({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) {
-  return <main className="mx-auto w-full max-w-7xl px-5 py-16 md:px-8 md:py-24"><div className="grid gap-10 lg:grid-cols-[230px_minmax(0,1fr)]"><aside className="lg:sticky lg:top-24 lg:h-fit"><Button variant="ghost" size="sm" asChild className="mb-5 -ml-2"><Link href="/"><ArrowLeft />Home</Link></Button><nav className="grid gap-1 rounded-2xl border border-white/8 bg-white/[0.025] p-2">{nav.map(([label, href]) => <Link key={href} href={href} className="rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-white/[0.05] hover:text-foreground">{label}</Link>)}</nav></aside><article className="min-w-0"><Badge variant="outline" className="border-white/10 text-emerald-300">{eyebrow}</Badge><h1 className="mt-5 max-w-4xl text-balance text-5xl font-semibold leading-[.95] tracking-[-.055em] md:text-7xl">{title}</h1><p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">{description}</p><div className="mt-12 space-y-10 text-[15px] leading-8 text-muted-foreground [&_h2]:mt-14 [&_h2]:text-3xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-foreground [&_h3]:mt-8 [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-foreground [&_p]:max-w-3xl [&_ul]:max-w-3xl [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_code:not(pre_code)]:rounded-md [&_code:not(pre_code)]:border [&_code:not(pre_code)]:border-white/8 [&_code:not(pre_code)]:bg-white/[0.035] [&_code:not(pre_code)]:px-1.5 [&_code:not(pre_code)]:py-0.5 [&_code:not(pre_code)]:font-mono [&_code:not(pre_code)]:text-xs [&_code:not(pre_code)]:text-slate-200 [&_pre]:overflow-x-auto [&_pre]:rounded-2xl [&_pre]:border [&_pre]:border-white/10 [&_pre]:bg-[#080d16] [&_pre]:p-5 [&_pre]:font-mono [&_pre]:text-xs [&_pre]:leading-7 [&_pre]:text-slate-200">{children}</div></article></div></main>
+const nav = [
+  ["Overview", "/docs"],
+  ["Getting started", "/docs/getting-started"],
+  ["Request ownership", "/docs/concepts/request-ownership"],
+  ["Examples", "/examples"],
+  ["Roadmap", "/roadmap"],
+  ["Changelog", "/changelog"],
+] as const;
+
+export function DocsShell({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <main className="section-shell docs-layout">
+      <aside className="docs-sidebar">
+        <Link className="docs-home" href="/">
+          <ArrowLeft size={14} /> Home
+        </Link>
+        <nav className="docs-nav" aria-label="Documentation navigation">
+          {nav.map(([label, href], index) => (
+            <Link key={href} href={href}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              {label}
+            </Link>
+          ))}
+        </nav>
+      </aside>
+
+      <article className="docs-article">
+        <p className="eyebrow">{eyebrow}</p>
+        <h1 className="docs-title">{title}</h1>
+        <p className="docs-description">{description}</p>
+        <div className="docs-body">{children}</div>
+      </article>
+    </main>
+  );
 }
+
 export function DocsGrid() {
-  const cards = [[BookOpen, "Getting started", "Install Nelo and run the smallest owned route.", "/docs/getting-started"], [Boxes, "Request ownership", "Understand task, resource, and delivery lifetimes.", "/docs/concepts/request-ownership"], [Code2, "Examples", "Copy focused patterns for common route shapes.", "/examples"], [Map, "Roadmap", "See what is implemented, verified, and still planned.", "/roadmap"], [ScrollText, "Changelog", "Track product and runtime changes.", "/changelog"], [FileCode2, "Source", "Read the implementation and open issues on GitHub.", "https://github.com/lasder-ca/Nelo"]] as const
-  return <div className="grid gap-4 md:grid-cols-2">{cards.map(([Icon, title, text, href]) => <Link key={title} href={href}><Card className="group h-full transition hover:-translate-y-1 hover:border-white/18"><CardHeader><Icon className="size-5 text-emerald-300" /><CardTitle className="mt-6 text-xl">{title}</CardTitle><CardDescription className="leading-7">{text}</CardDescription></CardHeader><CardContent className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">Open <ArrowRight className="size-3 transition-transform group-hover:translate-x-1" /></CardContent></Card></Link>)}</div>
+  const cards = [
+    [BookOpen, "Getting started", "Install Nelo and run the smallest owned route.", "/docs/getting-started"],
+    [Boxes, "Request ownership", "Understand task, resource, and delivery lifetimes.", "/docs/concepts/request-ownership"],
+    [Code2, "Examples", "Copy focused patterns for common route shapes.", "/examples"],
+    [Map, "Roadmap", "See what is implemented, verified, and still planned.", "/roadmap"],
+    [ScrollText, "Changelog", "Track product and runtime changes.", "/changelog"],
+    [FileCode2, "Source", "Read the implementation and open issues on GitHub.", "https://github.com/lasder-ca/Nelo"],
+  ] as const;
+
+  return (
+    <div className="docs-grid">
+      {cards.map(([Icon, title, text, href], index) => (
+        <Link className="docs-card" key={title} href={href}>
+          <span className="docs-card-index">{String(index + 1).padStart(2, "0")}</span>
+          <Icon size={18} />
+          <div>
+            <h2>{title}</h2>
+            <p>{text}</p>
+          </div>
+          <ArrowRight className="docs-card-arrow" size={14} />
+        </Link>
+      ))}
+    </div>
+  );
 }
