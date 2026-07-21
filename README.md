@@ -22,7 +22,10 @@
   English · <a href="./README.ja.md">日本語</a> · <a href="https://nelo.lattee.jp">Website</a>
 </p>
 
-Nelo treats a request as the owner of the work started for it. A handler may return a `Response` while tasks are still running, resources are still open, or a response body is still being delivered. Nelo keeps those operations inside explicit lifetime boundaries so they can be awaited, cancelled, released, or transferred deliberately.
+Nelo treats a request as the owner of the work started for it. A handler may return a `Response`
+while tasks are still running, resources are still open, or a response body is still being
+delivered. Nelo keeps those operations inside explicit lifetime boundaries so they can be awaited,
+cancelled, released, or transferred deliberately.
 
 > Returning a `Response` is not the same as completing the request lifetime.
 
@@ -36,7 +39,8 @@ Ordinary asynchronous handlers can leave work behind:
 - failures during cleanup or delivery are lost;
 - shutdown begins while request-owned work remains active.
 
-Nelo makes the ownership of that work visible without replacing standard `Request`, `Response`, `Headers`, `URL`, `ReadableStream`, or `AbortSignal` APIs.
+Nelo makes the ownership of that work visible without replacing standard `Request`, `Response`,
+`Headers`, `URL`, `ReadableStream`, or `AbortSignal` APIs.
 
 ## Lifetime model
 
@@ -52,7 +56,9 @@ Request lifetime
     └── context.delivery.use()
 ```
 
-The handler scope closes after the handler finishes. The delivery scope remains active until the response body completes, fails, is cancelled, or the transport reports a disconnect. Owned resources are released once, in reverse acquisition order.
+The handler scope closes after the handler finishes. The delivery scope remains active until the
+response body completes, fails, is cancelled, or the transport reports a disconnect. Owned resources
+are released once, in reverse acquisition order.
 
 ## Example
 
@@ -62,13 +68,9 @@ import { Nelo } from "@lasder/nelo";
 const app = new Nelo();
 
 app.get("/users/:id", async (context) => {
-  const user = context.fork("user", (signal) =>
-    fetchUser(context.params.id!, { signal })
-  );
+  const user = context.fork("user", (signal) => fetchUser(context.params.id!, { signal }));
 
-  const feed = context.fork("feed", (signal) =>
-    fetchFeed(context.params.id!, { signal })
-  );
+  const feed = context.fork("feed", (signal) => fetchFeed(context.params.id!, { signal }));
 
   return context.json({
     user: await user,
@@ -77,37 +79,40 @@ app.get("/users/:id", async (context) => {
 });
 ```
 
-Nelo must own a task from the moment it starts. It does not attach reliable cancellation to an arbitrary promise after that promise is already running.
+Nelo must own a task from the moment it starts. It does not attach reliable cancellation to an
+arbitrary promise after that promise is already running.
 
 ## Core API
 
-| API | Purpose |
-|---|---|
-| `app.fetch(request)` | Runs routing, middleware, the handler, and owned response delivery. |
-| `context.fork(name, operation)` | Starts an eager task owned by the current request. |
-| `context.signal` | Exposes cooperative cancellation to request-owned work. |
-| `context.use(name, acquire, cleanup?)` | Acquires a handler-owned resource and releases it once in LIFO order. |
-| `context.delivery.fork(name, operation)` | Starts work owned by response delivery. |
-| `context.delivery.use(cleanup)` | Keeps cleanup attached to the delivery scope. |
-| `LifetimeScope#createChild(name)` | Creates an explicit child ownership boundary. |
+| API                                      | Purpose                                                               |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `app.fetch(request)`                     | Runs routing, middleware, the handler, and owned response delivery.   |
+| `context.fork(name, operation)`          | Starts an eager task owned by the current request.                    |
+| `context.signal`                         | Exposes cooperative cancellation to request-owned work.               |
+| `context.use(name, acquire, cleanup?)`   | Acquires a handler-owned resource and releases it once in LIFO order. |
+| `context.delivery.fork(name, operation)` | Starts work owned by response delivery.                               |
+| `context.delivery.use(cleanup)`          | Keeps cleanup attached to the delivery scope.                         |
+| `LifetimeScope#createChild(name)`        | Creates an explicit child ownership boundary.                         |
 
 ### Owned tasks
 
-`context.fork()` returns an awaitable `OwnedTask`. The task retains its name, parent scope, settlement state, and failure for diagnostics.
+`context.fork()` returns an awaitable `OwnedTask`. The task retains its name, parent scope,
+settlement state, and failure for diagnostics.
 
 ```ts
-const profile = context.fork("profile", (signal) =>
-  loadProfile({ signal })
-);
+const profile = context.fork("profile", (signal) => loadProfile({ signal }));
 
 return context.json(await profile);
 ```
 
-If an owned task is neither observed nor transferred before its scope completes, Nelo requests cancellation and reports `NELO_TASK_001` instead of silently accepting detached work.
+If an owned task is neither observed nor transferred before its scope completes, Nelo requests
+cancellation and reports `NELO_TASK_001` instead of silently accepting detached work.
 
 ### Cooperative cancellation
 
-Nelo preserves the first typed cancellation reason and propagates one `AbortSignal` through child scopes and owned tasks. Cancellation remains cooperative: JavaScript cannot forcibly stop an arbitrary promise, so operations must observe the supplied signal and stop safely.
+Nelo preserves the first typed cancellation reason and propagates one `AbortSignal` through child
+scopes and owned tasks. Cancellation remains cooperative: JavaScript cannot forcibly stop an
+arbitrary promise, so operations must observe the supplied signal and stop safely.
 
 ### Scoped resources
 
@@ -119,11 +124,13 @@ const connection = await context.use(
 );
 ```
 
-Resources are released once, in reverse acquisition order, after owned work settles. Handler, task, and cleanup failures remain observable and are aggregated when necessary.
+Resources are released once, in reverse acquisition order, after owned work settles. Handler, task,
+and cleanup failures remain observable and are aggregated when necessary.
 
 ### Delivery-owned resources
 
-A resource created for a response stream often needs to remain open after the handler returns. Register its cleanup with the delivery scope:
+A resource created for a response stream often needs to remain open after the handler returns.
+Register its cleanup with the delivery scope:
 
 ```ts
 app.get("/stream", async (context) => {
@@ -134,7 +141,8 @@ app.get("/stream", async (context) => {
 });
 ```
 
-The delivery scope closes after body completion, cancellation, producer failure, client disconnect, or server shutdown.
+The delivery scope closes after body completion, cancellation, producer failure, client disconnect,
+or server shutdown.
 
 ## Web framework surface
 
@@ -153,17 +161,18 @@ The current portable surface includes:
 
 ## Runtime support
 
-| Capability | Portable core | Node.js | Cloudflare | Deno | Bun |
-|---|:---:|:---:|:---:|:---:|:---:|
-| Request scopes | ✅ | — | — | ✅ | — |
-| Owned tasks | ✅ | — | — | ✅ | — |
-| Resource cleanup | ✅ | — | — | ✅ | — |
-| Response delivery tracking | ✅ | ✅ | Planned | Planned | Planned |
-| Client disconnect integration | — | ✅ | Planned | Planned | Planned |
-| Graceful shutdown | — | ✅ | Planned | Planned | Planned |
-| Deferred work | — | Planned | Planned | Planned | Planned |
+| Capability                    | Portable core | Node.js | Cloudflare |  Deno   |   Bun   |
+| ----------------------------- | :-----------: | :-----: | :--------: | :-----: | :-----: |
+| Request scopes                |      ✅       |    —    |     —      |   ✅    |    —    |
+| Owned tasks                   |      ✅       |    —    |     —      |   ✅    |    —    |
+| Resource cleanup              |      ✅       |    —    |     —      |   ✅    |    —    |
+| Response delivery tracking    |      ✅       |   ✅    |  Planned   | Planned | Planned |
+| Client disconnect integration |       —       |   ✅    |  Planned   | Planned | Planned |
+| Graceful shutdown             |       —       |   ✅    |  Planned   | Planned | Planned |
+| Deferred work                 |       —       | Planned |  Planned   | Planned | Planned |
 
-The portable core wraps `Response.body` at the observable body boundary. The Node.js adapter also maps transport disconnects, backpressure, and shutdown into the same lifetime model.
+The portable core wraps `Response.body` at the observable body boundary. The Node.js adapter also
+maps transport disconnects, backpressure, and shutdown into the same lifetime model.
 
 ## Current limits
 
@@ -175,7 +184,8 @@ Nelo does not currently claim:
 - complete Cloudflare, Deno, or Bun adapters;
 - identical transport behavior across every runtime.
 
-Runtime behavior is documented as supported only after the corresponding adapter and transport tests exist.
+Runtime behavior is documented as supported only after the corresponding adapter and transport tests
+exist.
 
 ## Development
 
@@ -199,9 +209,12 @@ npm run pack:dry-run
 ## Roadmap
 
 - **Phase 1 — complete:** lifetime scopes, owned tasks, typed cancellation, and resource cleanup.
-- **Phase 2 — complete:** Fetch-style application API, routing, middleware, context, and error handling.
-- **Phase 3 — complete:** Node.js adapter, real-socket disconnect tests, delivery tracking, graceful shutdown, and CI.
-- **Phase 4 — complete:** separate handler and delivery scopes, delivery-owned work, typed abort reasons, cleanup-failure aggregation, and request diagnostics.
+- **Phase 2 — complete:** Fetch-style application API, routing, middleware, context, and error
+  handling.
+- **Phase 3 — complete:** Node.js adapter, real-socket disconnect tests, delivery tracking, graceful
+  shutdown, and CI.
+- **Phase 4 — complete:** separate handler and delivery scopes, delivery-owned work, typed abort
+  reasons, cleanup-failure aggregation, and request diagnostics.
 - **Later:** additional runtime adapters, explicit deferred work, and diagnostic tooling.
 
 ## License
