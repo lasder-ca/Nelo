@@ -39,7 +39,6 @@ interface Route {
   readonly middleware: readonly NeloMiddleware[];
   readonly handler: NeloHandler;
   readonly order: number;
-  readonly staticCount: number;
 }
 
 const METHOD_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
@@ -76,7 +75,6 @@ export class Router {
       middleware: [...middleware],
       handler,
       order: this.#routes.length,
-      staticCount: segments.filter((segment) => segment.type === "static").length,
     });
   }
 
@@ -89,9 +87,7 @@ export class Router {
 
     const methodCandidates = pathCandidates
       .filter(({ route }) => route.method === normalizedMethod)
-      .sort((left, right) =>
-        right.route.staticCount - left.route.staticCount || left.route.order - right.route.order
-      );
+      .sort((left, right) => compareRouteSpecificity(left.route, right.route));
     const selected = methodCandidates[0];
     if (selected !== undefined) {
       return {
@@ -109,6 +105,16 @@ export class Router {
     }
     return { type: "not_found" };
   }
+}
+
+function compareRouteSpecificity(left: Route, right: Route): number {
+  for (let index = 0; index < left.segments.length; index++) {
+    const leftSegment = left.segments[index]!;
+    const rightSegment = right.segments[index]!;
+    if (leftSegment.type === rightSegment.type) continue;
+    return leftSegment.type === "static" ? -1 : 1;
+  }
+  return left.order - right.order;
 }
 
 function normalizeMethod(method: string): string {
@@ -145,7 +151,7 @@ function matchSegments(
   path: readonly string[],
 ): Record<string, string> | undefined {
   if (route.length !== path.length) return undefined;
-  const params: Record<string, string> = {};
+  const params = Object.create(null) as Record<string, string>;
   for (let index = 0; index < route.length; index++) {
     const routeSegment = route[index]!;
     const pathSegment = path[index]!;
