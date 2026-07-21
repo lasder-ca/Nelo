@@ -56,7 +56,7 @@ jobs:
       - name: Verify the Node subpath export
         run: >-
           node --input-type=module --eval
-          'import("nelo/node").then(({ nodeCapabilities }) => {
+          'import("@latteworkspace/nelo/node").then(({ nodeCapabilities }) => {
           if (
           nodeCapabilities.gracefulShutdown !== "adapter_managed"
           ) process.exit(1)
