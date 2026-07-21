@@ -59,7 +59,9 @@ jobs:
           }
 
           publish_package() {
-            local package_name version
+            local package_name version npm_user
+            npm_user="$(npm whoami)" || return $?
+            echo "publishing as ${npm_user}"
             package_name="$(node -p "require('./package.json').name")" || return $?
             version="$(node -p "require('./package.json').version")" || return $?
             if npm view "${package_name}@${version}" version >/dev/null 2>&1; then
@@ -84,21 +86,26 @@ jobs:
           exit_code=$?
           cat "${log_file}"
 
+          npm_user="$(sed -n 's/^publishing as //p' "${log_file}" | tail -n 1 | tr -cd 'A-Za-z0-9._-')"
+          if [ -z "${npm_user}" ]; then
+            npm_user="unknown"
+          fi
+
           if [ "${exit_code}" -eq 0 ]; then
             state="success"
-            context="npm/publish"
+            context="npm/publish (${npm_user})"
             description="Nelo prerelease is available on npm"
           else
             state="failure"
             error_code="$(sed -n 's/^npm error code //p' "${log_file}" | tail -n 1 | tr -cd 'A-Za-z0-9_-')"
-            error_detail="$(grep '^npm error' "${log_file}" | grep -v 'npm error code ' | grep -v 'complete log' | head -n 1 | sed 's/^npm error //' | tr '\n\r\"/' '    ' | sed 's/[[:space:]]\+/ /g' | cut -c1-68)"
+            error_detail="$(grep '^npm error' "${log_file}" | grep -v 'npm error code ' | grep -v 'complete log' | head -n 1 | sed 's/^npm error //' | tr '\n\r\"/' '    ' | sed 's/[[:space:]]\+/ /g' | cut -c1-58)"
             if [ -z "${error_code}" ]; then
               error_code="ERROR"
             fi
             if [ -z "${error_detail}" ]; then
               error_detail="publish failed"
             fi
-            context="npm/publish: ${failed_stage}: ${error_code} ${error_detail}"
+            context="npm/publish (${npm_user}): ${failed_stage}: ${error_code} ${error_detail}"
             description="Nelo npm publish failed"
           fi
 
