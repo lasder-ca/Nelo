@@ -1,48 +1,27 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  Braces,
-  Check,
-  CircleDot,
-  Github,
-  Radio,
-  TerminalSquare,
-} from "lucide-react";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
+import { ArrowRight, Braces, CircleDot, Github, Layers3, Radio, Sparkles } from "lucide-react";
 import { CodeBlock } from "@/components/code-block";
-import { RequestLab } from "@/components/request-lab";
-import { RuntimeMatrix } from "@/components/runtime-matrix";
-import { Roadmap } from "@/components/roadmap";
-import { getRepositorySnapshot } from "@/lib/github";
-import { githubUrl, heroCode } from "@/lib/content";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import { brandAssets } from "@/lib/brand";
+import { githubUrl, heroCode } from "@/lib/content";
+import { getRepositorySnapshot } from "@/lib/github";
 
-function formatCount(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    notation: value >= 1000 ? "compact" : "standard",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
-const principles = [
+const features = [
   {
-    index: "01",
-    title: "Child work has an owner.",
-    body: "context.fork() creates a named task that belongs to the current request. It cannot quietly become an untracked promise.",
-    code: 'context.fork("profile", (signal) => loadProfile({ signal }))',
+    icon: CircleDot,
+    title: "Owned tasks",
+    text: "Every child operation has a parent, a signal, and a finish line.",
   },
   {
-    index: "02",
-    title: "Cancellation keeps its reason.",
-    body: "The same cooperative signal travels through child scopes while the first abort reason remains available for diagnostics.",
-    code: "context.signal.reason // client_disconnect",
+    icon: Braces,
+    title: "Scoped resources",
+    text: "Acquisition and cleanup stay attached to the request that uses them.",
   },
   {
-    index: "03",
-    title: "Cleanup runs once.",
-    body: "Resources are released in reverse acquisition order after the work that owns them has settled.",
-    code: 'context.use("database", connect, (db) => db.close())',
+    icon: Radio,
+    title: "Delivery lifetime",
+    text: "The response can keep ownership after the handler has returned.",
   },
 ] as const;
 
@@ -53,144 +32,76 @@ export default async function HomePage() {
     <main>
       <SiteHeader />
 
-      <section className="hero section-shell" id="top">
-        <div className="hero-copy-block">
-          <div className="project-mark">
-            <img src={brandAssets.icon} alt="Nelo" width={40} height={40} />
-            <span>Request ownership runtime</span>
+      <section className="home-hero page-shell">
+        <div className="hero-copy">
+          <div className="hero-mark">
+            <img src={brandAssets.icon} alt="Nelo" width={42} height={42} />
+            <span>Request ownership for TypeScript</span>
           </div>
-          <h1>Every request owns its work.</h1>
+          <h1>Every request<br />owns its work.</h1>
           <p>
-            Nelo is a Web Standards framework for TypeScript that makes child tasks,
-            cancellation, resource cleanup, and response delivery explicit parts of the request lifecycle.
+            Nelo keeps child tasks, cancellation, resources, and response delivery inside one explicit lifecycle.
+            Ordinary Web Standards on the outside. Structured ownership underneath.
           </p>
           <div className="hero-actions">
-            <Link href="/docs" className="primary-button">
-              Read the docs <ArrowRight size={15} />
-            </Link>
-            <a href={githubUrl} className="secondary-button">
-              <Github size={15} /> GitHub
-            </a>
+            <Link href="/docs" className="glass-button primary">Read the docs <ArrowRight size={15} /></Link>
+            <a href={githubUrl} className="glass-button secondary"><Github size={15} /> GitHub</a>
+          </div>
+          <div className="hero-facts" aria-label="Project facts">
+            <span><strong>62</strong> tests</span>
+            <span><strong>04</strong> phases</span>
+            <span><strong>{repo.stars}</strong> stars</span>
+            <span><strong>Apache</strong> 2.0</span>
           </div>
         </div>
 
-        <div className="hero-code">
-          <div className="hero-code-label">
-            <span>app.ts</span>
-            <span>Handler Scope</span>
-          </div>
-          <CodeBlock code={heroCode} filename="app.ts" compact />
-        </div>
-      </section>
-
-      <section className="status-strip" aria-label="Project status">
-        <div className="section-shell status-grid">
-          <div><span>phase</span><strong>04 complete</strong></div>
-          <div><span>tests</span><strong>62 passing</strong></div>
-          <div><span>repository</span><strong>{formatCount(repo.stars)} stars · {repo.openIssues} issues</strong></div>
-          <div><span>license</span><strong>Apache-2.0</strong></div>
-        </div>
-      </section>
-
-      <section className="section-shell section-block" id="concept">
-        <div className="section-index">01 / Model</div>
-        <div className="section-content">
-          <div className="section-intro">
-            <p className="eyebrow">Request ownership</p>
-            <h2>Async work needs a boundary.</h2>
-            <p>
-              A handler returning does not always mean the request is finished. Nelo separates work owned by
-              the handler from work required while the response body is still being delivered.
-            </p>
-          </div>
-
-          <div className="lifetime-board">
-            <div className="lifetime-row">
-              <div className="lifetime-number">A</div>
-              <div>
-                <strong>Handler Scope</strong>
-                <p>middleware · route handler · context.fork() · context.use()</p>
-              </div>
-              <span>settles first</span>
+        <div className="liquid-stage" aria-label="Nelo request lifecycle preview">
+          <div className="liquid-orb orb-one" />
+          <div className="liquid-orb orb-two" />
+          <div className="stage-glass">
+            <div className="stage-titlebar">
+              <div><span /><span /><span /></div>
+              <p>app.ts</p>
+              <small>Handler Scope</small>
             </div>
-            <div className="lifetime-divider" />
-            <div className="lifetime-row">
-              <div className="lifetime-number">B</div>
-              <div>
-                <strong>Delivery Scope</strong>
-                <p>Response.body · delivery.fork() · delivery.use()</p>
-              </div>
-              <span>closes last</span>
+            <CodeBlock code={heroCode} filename="app.ts" compact />
+            <div className="scope-rail">
+              <span>request</span><i />
+              <span>handler</span><i />
+              <span>delivery</span>
             </div>
           </div>
-
-          <div className="principle-list">
-            {principles.map((item) => (
-              <article key={item.index} className="principle-row">
-                <span className="principle-index">{item.index}</span>
-                <div>
-                  <h3>{item.title}</h3>
-                  <p>{item.body}</p>
-                </div>
-                <code>{item.code}</code>
-              </article>
-            ))}
-          </div>
         </div>
       </section>
 
-      <section className="section-shell section-block" id="api">
-        <div className="section-index">02 / Live API</div>
-        <div className="section-content">
-          <div className="section-intro compact-intro">
-            <p className="eyebrow">Server-backed lifecycle demo</p>
-            <h2>Run the boundary.</h2>
-            <p>
-              The demo calls a real Next.js route and returns the Handler and Delivery timeline for success,
-              disconnect, and producer failure.
-            </p>
-          </div>
-          <RequestLab />
+      <section className="home-summary page-shell">
+        <div className="summary-heading">
+          <p className="eyebrow">One model, three boundaries</p>
+          <h2>Make lifetime visible.</h2>
+          <Link href="/docs/concepts/request-ownership">Understand the model <ArrowRight size={14} /></Link>
+        </div>
+        <div className="feature-grid">
+          {features.map(({ icon: Icon, title, text }, index) => (
+            <article className="feature-glass" key={title}>
+              <div className="feature-top"><span>0{index + 1}</span><Icon size={18} /></div>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
         </div>
       </section>
 
-      <section className="section-shell section-block" id="surface">
-        <div className="section-index">03 / Surface</div>
-        <div className="section-content">
-          <div className="section-intro compact-intro">
-            <p className="eyebrow">Small API</p>
-            <h2>Normal TypeScript, explicit ownership.</h2>
-          </div>
-          <div className="api-list">
-            <div><span><TerminalSquare size={17} /> Owned tasks</span><code>context.fork(name, operation)</code></div>
-            <div><span><CircleDot size={17} /> Cancellation</span><code>context.signal</code></div>
-            <div><span><Braces size={17} /> Resources</span><code>context.use(name, acquire, cleanup)</code></div>
-            <div><span><Radio size={17} /> Delivery</span><code>context.delivery.fork() / use()</code></div>
-          </div>
-          <div className="standards-row">
-            {["Request", "Response", "ReadableStream", "AbortSignal"].map((item) => (
-              <span key={item}><Check size={12} /> {item}</span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section-shell section-block" id="runtimes">
-        <div className="section-index">04 / Runtimes</div>
-        <div className="section-content"><RuntimeMatrix /></div>
-      </section>
-
-      <Roadmap />
-
-      <section className="section-shell final-callout">
-        <div>
-          <p className="eyebrow">Experimental software</p>
-          <h2>Make request lifetime part of the program.</h2>
-        </div>
-        <div className="final-actions">
-          <Link href="/docs" className="primary-button">Documentation <ArrowRight size={15} /></Link>
-          <Link href="/examples" className="secondary-button">Examples</Link>
-        </div>
+      <section className="page-links page-shell" aria-label="Explore Nelo">
+        <Link href="/docs" className="page-link-card large">
+          <div><span>Docs</span><h2>Start with the ownership model.</h2></div>
+          <ArrowRight size={22} />
+        </Link>
+        <Link href="/examples" className="page-link-card">
+          <Sparkles size={19} /><div><span>Examples</span><h3>Copy focused route patterns.</h3></div><ArrowRight size={18} />
+        </Link>
+        <Link href="/roadmap" className="page-link-card">
+          <Layers3 size={19} /><div><span>Roadmap</span><h3>See what is verified next.</h3></div><ArrowRight size={18} />
+        </Link>
       </section>
 
       <SiteFooter />
