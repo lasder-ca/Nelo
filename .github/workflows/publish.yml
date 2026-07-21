@@ -2,6 +2,12 @@ name: Publish package
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - .github/workflows/publish.yml
+      - .npm-publish-trigger
   release:
     types: [published]
 
@@ -43,6 +49,13 @@ jobs:
       - run: npm run check:tarball
 
       - name: Publish prerelease to npm
-        run: npm publish --access public --tag next --provenance
+        shell: bash
+        run: |
+          version="$(node --input-type=module --eval "import pkg from './package.json' with { type: 'json' }; process.stdout.write(pkg.version)")"
+          if npm view "nelo@${version}" version >/dev/null 2>&1; then
+            echo "nelo@${version} is already published"
+            exit 0
+          fi
+          npm publish --access public --tag next --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
