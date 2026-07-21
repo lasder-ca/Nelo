@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./brand-refresh.css";
+import "./sharp-code.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { htmlLang } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
