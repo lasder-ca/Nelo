@@ -11,6 +11,14 @@ import { getLocale } from "@/lib/locale";
 
 const featureIcons = [CircleDot, Braces, Radio] as const;
 
+const brandCopy = {
+  badge: "Request ownership for TypeScript",
+  title: ["Every request", "owns its work."],
+  summaryEyebrow: "One model, three boundaries",
+  summaryTitle: "Make lifetime visible.",
+  featureTitles: ["Owned tasks", "Scoped resources", "Delivery lifetime"],
+} as const;
+
 export default async function HomePage() {
   const [repo, locale] = await Promise.all([getRepositorySnapshot(), getLocale()]);
   const t = getDictionary(locale);
@@ -23,9 +31,9 @@ export default async function HomePage() {
         <div className="hero-copy">
           <div className="hero-mark">
             <img src={brandAssets.icon} alt="Nelo" width={42} height={42} />
-            <span>{t.home.badge}</span>
+            <span>{brandCopy.badge}</span>
           </div>
-          <h1>{t.home.title[0]}<br />{t.home.title[1]}</h1>
+          <h1 className="brand-headline">{brandCopy.title[0]}<br />{brandCopy.title[1]}</h1>
           <p>{t.home.description}</p>
           <div className="hero-actions">
             <Link href="/docs" className="glass-button primary">{t.home.readDocs} <ArrowRight size={15} /></Link>
@@ -60,17 +68,18 @@ export default async function HomePage() {
 
       <section className="home-summary page-shell">
         <div className="summary-heading">
-          <p className="eyebrow">{t.home.summaryEyebrow}</p>
-          <h2>{t.home.summaryTitle}</h2>
+          <p className="eyebrow brand-kicker">{brandCopy.summaryEyebrow}</p>
+          <h2 className="brand-heading">{brandCopy.summaryTitle}</h2>
           <Link href="/docs/concepts/request-ownership">{t.home.understand} <ArrowRight size={14} /></Link>
         </div>
         <div className="feature-grid">
-          {t.home.features.map(({ title, text }, index) => {
+          {t.home.features.map(({ text }, index) => {
             const Icon = featureIcons[index]!;
+            const title = brandCopy.featureTitles[index]!;
             return (
               <article className="feature-glass" key={title}>
                 <div className="feature-top"><span>0{index + 1}</span><Icon size={18} /></div>
-                <h3>{title}</h3>
+                <h3 className="brand-feature-title">{title}</h3>
                 <p>{text}</p>
               </article>
             );
