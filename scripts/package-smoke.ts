@@ -1,5 +1,5 @@
-import { Nelo, type NeloContext, type OwnedTask } from "nelo";
-import { type NeloNodeServer, serve } from "nelo/node";
+import { Nelo, type NeloContext, type OwnedTask } from "@latteworkspace/nelo";
+import { type NeloNodeServer, serve } from "@latteworkspace/nelo/node";
 
 export const app: Nelo = new Nelo();
 
