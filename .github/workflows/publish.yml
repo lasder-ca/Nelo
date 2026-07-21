@@ -59,16 +59,33 @@ jobs:
           }
 
           publish_package() {
-            local package_name version npm_user
+            local package_name version npm_user encoded
             npm_user="$(npm whoami)" || return $?
             echo "publishing as ${npm_user}"
             package_name="$(node -p "require('./package.json').name")" || return $?
             version="$(node -p "require('./package.json').version")" || return $?
+
             if npm view "${package_name}@${version}" version >/dev/null 2>&1; then
               echo "${package_name}@${version} is already published"
-              return 0
+            else
+              npm publish --access public --tag next --provenance || return $?
             fi
-            npm publish --access public --tag next --provenance
+
+            npm access set status=public "${package_name}" || return $?
+            encoded="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "${package_name}")" || return $?
+
+            for attempt in $(seq 1 12); do
+              if curl --fail --silent --show-error \
+                "https://registry.npmjs.org/${encoded}" >/dev/null; then
+                echo "${package_name}@${version} is publicly available"
+                return 0
+              fi
+              echo "waiting for public registry propagation (${attempt}/12)"
+              sleep 5
+            done
+
+            echo "${package_name}@${version} is not publicly readable" >&2
+            return 1
           }
 
           {
@@ -94,7 +111,7 @@ jobs:
           if [ "${exit_code}" -eq 0 ]; then
             state="success"
             context="npm/publish (${npm_user})"
-            description="Nelo prerelease is available on npm"
+            description="Nelo prerelease is public on npm"
           else
             state="failure"
             error_code="$(sed -n 's/^npm error code //p' "${log_file}" | tail -n 1 | tr -cd 'A-Za-z0-9_-')"
