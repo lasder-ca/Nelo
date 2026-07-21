@@ -1,0 +1,62 @@
+name: Cleanup stale branches
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/cleanup-stale-branches.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete reviewed stale branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          branches=(
+            "feat/node-adapter-ci"
+            "fix/deno-ci-node-types"
+            "fix/ci-site-build-audit"
+            "feat/shadcn-site"
+            "feat/site-design-system-v5"
+            "fix/japanese-copy-scope"
+            "fix/native-japanese-motion"
+            "feat/nelo-motion-i18n"
+            "fix/nelo-code-first-home"
+            "feat/nelo-interactive-showcase"
+            "fix/request-trace-ui"
+            "fix/nelo-boundary-ui"
+            "fix/site-payload-integrity"
+            "fix/vercel-site-install"
+            "feat/nelo-site-v3-production"
+            "deploy/nelo-site-v3"
+            "deploy/nelo-site-v3-batch"
+            "deploy/nelo-site-v3-batch2"
+            "feat/delivery-lifetime-diagnostics"
+            "feat/nelo-site-v2"
+            "fix/readme-logo"
+            "docs/readme-branding"
+          )
+
+          failed=0
+          for branch in "${branches[@]}"; do
+            if gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${branch}" >/dev/null 2>&1; then
+              if gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch}" >/dev/null; then
+                echo "deleted: ${branch}"
+              else
+                echo "::error::failed to delete ${branch}"
+                failed=1
+              fi
+            else
+              echo "already absent: ${branch}"
+            fi
+          done
+
+          exit "${failed}"
