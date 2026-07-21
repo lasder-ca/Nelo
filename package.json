@@ -1,9 +1,27 @@
 {
   "name": "nelo",
   "version": "0.2.0-alpha.1",
-  "private": true,
+  "private": false,
   "type": "module",
   "description": "A request-ownership runtime and Web Standards framework for TypeScript.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lasder-ca/Nelo.git"
+  },
+  "homepage": "https://nelo.lattee.jp",
+  "bugs": {
+    "url": "https://github.com/lasder-ca/Nelo/issues"
+  },
+  "keywords": [
+    "typescript",
+    "web-framework",
+    "request-lifecycle",
+    "structured-concurrency",
+    "cancellation",
+    "web-standards"
+  ],
+  "sideEffects": false,
   "engines": {
     "node": "^20.0.0 || ^22.0.0 || ^24.0.0"
   },
@@ -25,6 +43,9 @@
     "dist",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "format": "deno fmt --check",
     "format:check": "deno fmt --check",
@@ -40,7 +61,8 @@
     "build": "tsc -p tsconfig.build.json && deno run --allow-read=dist --allow-write=dist scripts/rewrite-declarations.ts",
     "check:package": "tsc --ignoreConfig --noEmit --strict --noUncheckedIndexedAccess --target ES2022 --module NodeNext --moduleResolution NodeNext --lib ES2022,DOM,ESNext.Disposable --types node scripts/package-smoke.ts",
     "check:tarball": "node scripts/tarball-smoke.mjs",
-    "pack:dry-run": "npm pack --dry-run"
+    "pack:dry-run": "npm pack --dry-run",
+    "prepublishOnly": "npm run build && npm run check:package && npm run check:tarball"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
