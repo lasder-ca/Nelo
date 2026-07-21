@@ -17,7 +17,8 @@
     "@std/assert": "jsr:@std/assert@1",
     "nelo": "./mod.ts",
     "nelo/node": "./src/node/mod.ts",
-    "@latteworkspace/nelo": "./mod.ts"
+    "@latteworkspace/nelo": "./mod.ts",
+    "@latteworkspace/nelo/node": "./src/node/mod.ts"
   },
   "compilerOptions": {
     "strict": true,
