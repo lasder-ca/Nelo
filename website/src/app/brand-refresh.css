@@ -1,4 +1,5 @@
 :root {
+  --font-brand: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", sans-serif;
   --font-menu: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", sans-serif;
 }
 
@@ -21,7 +22,7 @@ html[lang="zh-CN"] body {
 }
 
 .glass-brand {
-  font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", sans-serif;
+  font-family: var(--font-brand);
   font-weight: 720;
   letter-spacing: -.026em;
 }
@@ -29,6 +30,35 @@ html[lang="zh-CN"] body {
 .glass-brand img,
 .hero-mark img {
   filter: drop-shadow(0 8px 16px rgba(31, 77, 184, .22));
+}
+
+.hero-mark > span,
+.brand-headline,
+.brand-heading,
+.brand-kicker,
+.brand-feature-title {
+  font-family: var(--font-brand);
+  font-optical-sizing: auto;
+  font-synthesis: none;
+}
+
+.brand-headline {
+  line-height: .89 !important;
+  letter-spacing: -.075em !important;
+}
+
+.brand-heading {
+  line-height: .96 !important;
+  letter-spacing: -.06em !important;
+}
+
+.brand-kicker {
+  letter-spacing: .16em !important;
+  text-transform: uppercase !important;
+}
+
+.brand-feature-title {
+  letter-spacing: -.04em;
 }
 
 .desktop-nav a,
