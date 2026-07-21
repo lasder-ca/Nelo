@@ -90,11 +90,15 @@ jobs:
             description="Nelo prerelease is available on npm"
           else
             state="failure"
-            error_line="$(grep -E 'npm error|error:|Error:' "${log_file}" | tail -n 1 | tr '\n\r\"/' '    ' | sed 's/[[:space:]]\+/ /g' | cut -c1-54)"
-            if [ -z "${error_line}" ]; then
-              error_line="failed"
+            error_code="$(sed -n 's/^npm error code //p' "${log_file}" | tail -n 1 | tr -cd 'A-Za-z0-9_-')"
+            error_detail="$(grep '^npm error' "${log_file}" | grep -v 'npm error code ' | grep -v 'complete log' | tail -n 1 | sed 's/^npm error //' | tr '\n\r\"/' '    ' | sed 's/[[:space:]]\+/ /g' | cut -c1-55)"
+            if [ -z "${error_code}" ]; then
+              error_code="ERROR"
             fi
-            context="npm/publish: ${failed_stage}: ${error_line}"
+            if [ -z "${error_detail}" ]; then
+              error_detail="publish failed"
+            fi
+            context="npm/publish: ${failed_stage}: ${error_code} ${error_detail}"
             description="Nelo npm publish failed"
           fi
 
