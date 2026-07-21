@@ -1,0 +1,4 @@
+import type { Metadata } from "next"
+import { DocsShell } from "@/components/site/docs-shell"
+export const metadata: Metadata = { title: "Examples" }
+export default function Page() { return <DocsShell eyebrow="Examples" title="Patterns you can copy." description="Each example isolates one ownership concern so the behavior remains visible."><h2>Owned background work</h2><pre><code>{`const audit = context.fork("audit", (signal) => writeAudit({ signal }))\nawait audit`}</code></pre><h2>Database resource</h2><pre><code>{`const db = await context.use(\n  "database",\n  (signal) => connect({ signal }),\n  (resource) => resource.close(),\n)`}</code></pre><h2>Streaming response</h2><pre><code>{`const file = await openFile()\ncontext.delivery.use(() => file.close())\nreturn new Response(file.stream())`}</code></pre></DocsShell> }

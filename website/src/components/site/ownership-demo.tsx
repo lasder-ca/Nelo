@@ -1,0 +1,12 @@
+"use client"
+
+import Image from "next/image"
+import { ArrowRight, Box, Database, Radio } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Card } from "@/components/ui/card"
+
+export function OwnershipDemo() {
+  return <Card className="relative overflow-hidden border-white/10 bg-[#0a101b]/90 p-0 shadow-2xl shadow-black/40"><div className="absolute inset-0 bg-[radial-gradient(circle_at_65%_20%,rgba(68,137,255,.14),transparent_34%),radial-gradient(circle_at_30%_80%,rgba(100,215,188,.11),transparent_30%)]" /><div className="relative flex items-center justify-between border-b border-white/8 px-5 py-3 text-xs text-muted-foreground"><span className="font-mono">GET /report</span><Badge variant="outline" className="border-emerald-400/20 bg-emerald-400/5 text-emerald-300"><span className="size-1.5 rounded-full bg-emerald-300" /> owned</Badge></div><div className="relative p-5 sm:p-7"><div className="grid grid-cols-[1fr_auto_1.35fr_auto_1fr] items-center gap-3"><DemoNode label="Request" value="accepted" /><ArrowRight className="size-4 text-muted-foreground" /><div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.055] p-4 text-center shadow-[inset_0_1px_rgba(255,255,255,.04)]"><Image src="/brand/nelo-icon.png" alt="Nelo" width={64} height={64} className="mx-auto size-14 rounded-2xl object-contain" /><strong className="mt-2 block text-sm">Nelo</strong><span className="mt-1 block text-[11px] text-muted-foreground">owns the work</span></div><ArrowRight className="size-4 text-muted-foreground" /><DemoNode label="Response" value="delivered" /></div><div className="mt-5 grid grid-cols-3 gap-2"><OwnedChip icon={Box} label="task" /><OwnedChip icon={Database} label="resource" /><OwnedChip icon={Radio} label="delivery" /></div></div></Card>
+}
+function DemoNode({ label, value }: { label: string; value: string }) { return <div className="min-w-0 rounded-xl border border-white/8 bg-white/[0.035] px-3 py-4 text-center"><span className="block text-[10px] uppercase tracking-[.16em] text-muted-foreground">{label}</span><strong className="mt-1 block truncate text-xs">{value}</strong></div> }
+function OwnedChip({ icon: Icon, label }: { icon: typeof Box; label: string }) { return <div className="flex items-center justify-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-2 py-2.5 text-[11px] text-muted-foreground"><Icon className="size-3.5 text-emerald-300" />{label}</div> }
