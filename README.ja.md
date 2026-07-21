@@ -57,7 +57,7 @@ Neloは標準の`Request`、`Response`、`Headers`、`URL`、`ReadableStream`、
 ## 使用例
 
 ```ts
-import { Nelo } from "@lasder/nelo";
+import { Nelo } from "nelo";
 
 const app = new Nelo();
 
@@ -76,6 +76,8 @@ app.get("/users/:id", async (context) => {
   });
 });
 ```
+
+上のimportは、予定している公開APIを示すための例です。最終的なパッケージ名が確定するまでは、公開状況や利用可能性を保証しません。
 
 タスクは、開始した時点からNeloの管理下に置く必要があります。すでに動き始めた任意のPromiseへ、あとから確実な中断処理を付けるものではありません。
 
@@ -179,7 +181,7 @@ Neloは、次の動作を保証しません。
 
 ## 開発
 
-現在のリポジトリでは、アルファ版パッケージを`@lasder/nelo`として準備しています。
+公開パッケージ名はまだ確定していません。現在のソースを取得し、直接ビルドして検証できます。
 
 ```bash
 git clone https://github.com/lasder-ca/Nelo.git
