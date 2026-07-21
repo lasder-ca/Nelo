@@ -44,8 +44,8 @@ try {
 
   await writeFile(
     join(consumer, "smoke.mjs"),
-    `import { Nelo } from "nelo";
-import { serve } from "nelo/node";
+    `import { Nelo } from "@latteworkspace/nelo";
+import { serve } from "@latteworkspace/nelo/node";
 
 const app = new Nelo();
 let resourceOpen = true;
