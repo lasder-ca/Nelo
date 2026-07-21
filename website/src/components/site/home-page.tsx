@@ -4,4 +4,5 @@ export type Locale = "ja" | "en" | "ko" | "zh";
 
 export function HomePage() {
   redirect("/");
+  return null;
 }
