@@ -1,34 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
+  title: { default: "Nelo — Every request owns its work.", template: "%s · Nelo" },
+  description: "A request ownership runtime and Web Standards framework for TypeScript.",
   metadataBase: new URL("https://nelo.lattee.jp"),
-  title: {
-    default: "Nelo — Every request owns its work.",
-    template: "%s · Nelo",
-  },
-  description: "A request-ownership runtime and Web Standards framework for TypeScript.",
-  openGraph: {
-    title: "Nelo — Every request owns its work.",
-    description: "Structured ownership for child tasks, cancellation, and scoped resources.",
-    url: "https://nelo.lattee.jp",
-    siteName: "Nelo",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Nelo — Every request owns its work.",
-    description: "Structured request ownership for TypeScript.",
-  },
+  openGraph: { title: "Nelo — Every request owns its work.", description: "Structured ownership for child tasks, cancellation, and scoped resources.", url: "https://nelo.lattee.jp", siteName: "Nelo", type: "website" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
-        <ThemeProvider>{children}</ThemeProvider>
-      </body>
-    </html>
-  );
+  return <html lang="en"><body>{children}</body></html>;
 }
