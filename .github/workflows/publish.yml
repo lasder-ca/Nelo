@@ -37,10 +37,16 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Mark publishing as pending
+      - name: Validate and publish Nelo
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          set +e
+          set -o pipefail
+          log_file="$(mktemp)"
+
           curl --fail-with-body --silent --show-error \
             --request POST \
             --header "Authorization: Bearer ${GH_TOKEN}" \
@@ -48,50 +54,42 @@ jobs:
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             --data '{"state":"pending","context":"npm/publish","description":"Validating Nelo before npm publish"}'
 
-      - name: Use a trusted-publishing compatible npm CLI
-        run: npm install --global npm@latest
+          {
+            npm install --global npm@latest &&
+            npm ci &&
+            npm run format:check &&
+            npm run lint &&
+            npm run typecheck &&
+            npm test &&
+            npm run build &&
+            npm run check:package &&
+            npm run check:tarball &&
+            version="$(node -p "require('./package.json').version")" &&
+            if npm view "nelo@${version}" version >/dev/null 2>&1; then
+              echo "nelo@${version} is already published"
+            else
+              npm publish --access public --tag next --provenance
+            fi
+          } 2>&1 | tee "${log_file}"
+          exit_code=${PIPESTATUS[0]}
 
-      - run: npm ci
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - run: npm run check:package
-      - run: npm run check:tarball
-
-      - name: Publish prerelease to npm
-        shell: bash
-        run: |
-          version="$(node --input-type=module --eval "import pkg from './package.json' with { type: 'json' }; process.stdout.write(pkg.version)")"
-          if npm view "nelo@${version}" version >/dev/null 2>&1; then
-            echo "nelo@${version} is already published"
-            exit 0
+          if [ "${exit_code}" -eq 0 ]; then
+            state="success"
+            description="Nelo prerelease is available on npm"
+          else
+            state="failure"
+            description="$(grep -E 'npm error|error:|Error:' "${log_file}" | tail -n 1 | tr '\n\r\"' '   ' | cut -c1-120)"
+            if [ -z "${description}" ]; then
+              description="Nelo npm publish failed; inspect the Actions log"
+            fi
           fi
-          npm publish --access public --tag next --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Mark publish successful
-        if: success()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
+          payload="$(node -e 'console.log(JSON.stringify({state: process.argv[1], context: "npm/publish", description: process.argv[2]}))' "${state}" "${description}")"
           curl --fail-with-body --silent --show-error \
             --request POST \
             --header "Authorization: Bearer ${GH_TOKEN}" \
             --header "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            --data '{"state":"success","context":"npm/publish","description":"Nelo prerelease is available on npm"}'
+            --data "${payload}"
 
-      - name: Mark publish failed
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          curl --fail-with-body --silent --show-error \
-            --request POST \
-            --header "Authorization: Bearer ${GH_TOKEN}" \
-            --header "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            --data '{"state":"failure","context":"npm/publish","description":"Nelo npm publish failed"}'
+          exit "${exit_code}"
