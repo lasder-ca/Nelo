@@ -1,7 +1,58 @@
-import type { Metadata } from "next"
-import { Check, CircleDashed } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { DocsShell } from "@/components/site/docs-shell"
-export const metadata: Metadata = { title: "Roadmap" }
-const groups = [["Available", ["Portable request execution", "Handler and delivery scopes", "Typed cancellation reasons", "Node real-socket adapter"]], ["Next", ["Diagnostics ergonomics", "More delivery examples", "Adapter contract documentation"]], ["Later", ["Cloudflare adapter verification", "Bun adapter verification", "Stable 1.0 API review"]]]
-export default function Page() { return <DocsShell eyebrow="Roadmap" title="Verified before advertised." description="The roadmap separates implemented behavior from planned adapter claims."><div className="grid gap-4 md:grid-cols-3">{groups.map(([title, items], i) => <Card key={title as string}><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent className="grid gap-3">{(items as string[]).map((item) => <div key={item} className="flex gap-2 text-sm text-muted-foreground">{i === 0 ? <Check className="mt-1 size-4 shrink-0 text-emerald-300" /> : <CircleDashed className="mt-1 size-4 shrink-0" />}{item}</div>)}</CardContent></Card>)}</div></DocsShell> }
+import type { Metadata } from "next";
+import { Check, CircleDashed, ShieldCheck } from "lucide-react";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+
+export const metadata: Metadata = { title: "Roadmap" };
+
+const phases = [
+  {
+    number: "01—04",
+    state: "Complete",
+    title: "Ownership core and Node transport",
+    body: "Request scopes, owned tasks, deterministic cleanup, Handler and Delivery separation, typed abort reasons, diagnostics, and real-socket tests.",
+    complete: true,
+  },
+  {
+    number: "Next",
+    state: "Planned",
+    title: "Adapter contract and diagnostics ergonomics",
+    body: "Clarify runtime obligations, improve inspection output, and publish more delivery-focused examples before adding claims.",
+    complete: false,
+  },
+  {
+    number: "Later",
+    state: "Planned",
+    title: "Verified runtime expansion",
+    body: "Cloudflare, Deno, and Bun adapters only after disconnect, streaming, cleanup, and shutdown behavior can be tested honestly.",
+    complete: false,
+  },
+] as const;
+
+export default function RoadmapPage() {
+  return (
+    <main>
+      <SiteHeader />
+      <section className="page-hero page-shell roadmap-hero">
+        <p className="eyebrow">Roadmap</p>
+        <h1>Verified before advertised.</h1>
+        <p>Nelo separates implemented behavior from planned adapter claims. A runtime appears as supported only after its transport behavior is covered by real tests.</p>
+      </section>
+
+      <section className="roadmap-timeline page-shell">
+        {phases.map((phase) => (
+          <article className={`roadmap-card glass-surface ${phase.complete ? "complete" : "planned"}`} key={phase.number}>
+            <div className="roadmap-index">{phase.complete ? <Check size={17} /> : <CircleDashed size={17} />}<span>{phase.number}</span></div>
+            <div><small>{phase.state}</small><h2>{phase.title}</h2><p>{phase.body}</p></div>
+          </article>
+        ))}
+      </section>
+
+      <section className="roadmap-principle page-shell glass-surface">
+        <ShieldCheck size={22} />
+        <div><span>Release rule</span><h2>No capability badge without a reproducible test.</h2></div>
+      </section>
+      <SiteFooter />
+    </main>
+  );
+}
