@@ -1,12 +1,175 @@
-"use client"
+import type { ReactNode } from "react"
 
-import Image from "next/image"
-import { ArrowRight, Box, Database, Radio } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 
+const keyword = "text-[#c58cff]"
+const type = "text-[#8cb7ff]"
+const string = "text-[#8bd5b5]"
+const punctuation = "text-[#c9d4e6]"
+const plain = "text-[#d6dfec]"
+
 export function OwnershipDemo() {
-  return <Card className="relative overflow-hidden border-white/10 bg-[#0a101b]/90 p-0 shadow-2xl shadow-black/40"><div className="absolute inset-0 bg-[radial-gradient(circle_at_65%_20%,rgba(68,137,255,.14),transparent_34%),radial-gradient(circle_at_30%_80%,rgba(100,215,188,.11),transparent_30%)]" /><div className="relative flex items-center justify-between border-b border-white/8 px-5 py-3 text-xs text-muted-foreground"><span className="font-mono">GET /report</span><Badge variant="outline" className="border-emerald-400/20 bg-emerald-400/5 text-emerald-300"><span className="size-1.5 rounded-full bg-emerald-300" /> owned</Badge></div><div className="relative p-5 sm:p-7"><div className="grid grid-cols-[1fr_auto_1.35fr_auto_1fr] items-center gap-3"><DemoNode label="Request" value="accepted" /><ArrowRight className="size-4 text-muted-foreground" /><div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.055] p-4 text-center shadow-[inset_0_1px_rgba(255,255,255,.04)]"><Image src="/brand/nelo-icon.png" alt="Nelo" width={64} height={64} className="mx-auto size-14 rounded-2xl object-contain" /><strong className="mt-2 block text-sm">Nelo</strong><span className="mt-1 block text-[11px] text-muted-foreground">owns the work</span></div><ArrowRight className="size-4 text-muted-foreground" /><DemoNode label="Response" value="delivered" /></div><div className="mt-5 grid grid-cols-3 gap-2"><OwnedChip icon={Box} label="task" /><OwnedChip icon={Database} label="resource" /><OwnedChip icon={Radio} label="delivery" /></div></div></Card>
+  return (
+    <Card className="relative isolate overflow-hidden rounded-[2rem] border-white/15 bg-[#0a0f19] p-0 shadow-2xl shadow-black/45 [filter:none] [transform:none]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_8%,rgba(92,119,220,.18),transparent_34%),radial-gradient(circle_at_8%_78%,rgba(111,77,176,.14),transparent_32%)]" />
+
+      <div className="relative flex items-center justify-between border-b border-white/8 px-5 py-3.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#78859b] sm:px-6">
+        <div className="flex items-center gap-1.5" aria-hidden="true">
+          <span className="size-1.5 rounded-full bg-[#5f6c80]" />
+          <span className="size-1.5 rounded-full bg-[#5f6c80]" />
+          <span className="size-1.5 rounded-full bg-[#5f6c80]" />
+        </div>
+        <span className="normal-case tracking-normal text-[#758197]">app.ts</span>
+        <span>Handler scope</span>
+      </div>
+
+      <div className="relative px-4 py-5 sm:px-7 sm:py-7">
+        <pre className="overflow-x-auto subpixel-antialiased [filter:none] [font-synthesis:none] [text-rendering:geometricPrecision]">
+          <code className="block min-w-[32rem] font-mono text-[10px] leading-[1.72] sm:min-w-0 sm:text-[11px] lg:text-[12px]">
+            <CodeLine>
+              <Token className={keyword}>import</Token>
+              <Token className={punctuation}> {"{ "}</Token>
+              <Token className={type}>Nelo</Token>
+              <Token className={punctuation}>{" } "}</Token>
+              <Token className={keyword}>from</Token>
+              <Token className={string}> &quot;nelo&quot;</Token>
+              <Token className={punctuation}>;</Token>
+            </CodeLine>
+            <CodeLine />
+            <CodeLine>
+              <Token className={keyword}>const</Token>
+              <Token className={plain}> app </Token>
+              <Token className={punctuation}>= </Token>
+              <Token className={keyword}>new</Token>
+              <Token className={type}> Nelo</Token>
+              <Token className={punctuation}>();</Token>
+            </CodeLine>
+            <CodeLine />
+            <CodeLine>
+              <Token className={plain}>app</Token>
+              <Token className={punctuation}>.</Token>
+              <Token className={type}>get</Token>
+              <Token className={punctuation}>(</Token>
+              <Token className={string}>&quot;/users/:id&quot;</Token>
+              <Token className={punctuation}>, </Token>
+              <Token className={keyword}>async</Token>
+              <Token className={punctuation}> (</Token>
+              <Token className={plain}>context</Token>
+              <Token className={punctuation}>{") => {"}</Token>
+            </CodeLine>
+            <CodeLine indent={1}>
+              <Token className={keyword}>const</Token>
+              <Token className={plain}> user </Token>
+              <Token className={punctuation}>= </Token>
+              <Token className={plain}>context</Token>
+              <Token className={punctuation}>.</Token>
+              <Token className={type}>fork</Token>
+              <Token className={punctuation}>(</Token>
+              <Token className={string}>&quot;user&quot;</Token>
+              <Token className={punctuation}>, (</Token>
+              <Token className={plain}>signal</Token>
+              <Token className={punctuation}>{") =>"}</Token>
+            </CodeLine>
+            <CodeLine indent={2}>
+              <Token className={plain}>fetchUser</Token>
+              <Token className={punctuation}>(</Token>
+              <Token className={plain}>context.params.id</Token>
+              <Token className={punctuation}>, {"{ "}</Token>
+              <Token className={plain}>signal</Token>
+              <Token className={punctuation}>{" })"}</Token>
+            </CodeLine>
+            <CodeLine indent={1}>
+              <Token className={punctuation}>);</Token>
+            </CodeLine>
+            <CodeLine />
+            <CodeLine indent={1}>
+              <Token className={keyword}>const</Token>
+              <Token className={plain}> feed </Token>
+              <Token className={punctuation}>= </Token>
+              <Token className={plain}>context</Token>
+              <Token className={punctuation}>.</Token>
+              <Token className={type}>fork</Token>
+              <Token className={punctuation}>(</Token>
+              <Token className={string}>&quot;feed&quot;</Token>
+              <Token className={punctuation}>, (</Token>
+              <Token className={plain}>signal</Token>
+              <Token className={punctuation}>{") =>"}</Token>
+            </CodeLine>
+            <CodeLine indent={2} highlighted>
+              <Token className={plain}>fetchFeed</Token>
+              <Token className={punctuation}>(</Token>
+              <Token className={plain}>context.params.id</Token>
+              <Token className={punctuation}>, {"{ "}</Token>
+              <Token className={plain}>signal</Token>
+              <Token className={punctuation}>{" })"}</Token>
+            </CodeLine>
+            <CodeLine indent={1}>
+              <Token className={punctuation}>);</Token>
+            </CodeLine>
+            <CodeLine />
+            <CodeLine indent={1}>
+              <Token className={keyword}>return</Token>
+              <Token className={plain}> context</Token>
+              <Token className={punctuation}>.</Token>
+              <Token className={type}>json</Token>
+              <Token className={punctuation}>({"{"}</Token>
+            </CodeLine>
+            <CodeLine indent={2}>
+              <Token className={plain}>user</Token>
+              <Token className={punctuation}>: </Token>
+              <Token className={keyword}>await</Token>
+              <Token className={plain}> user,</Token>
+            </CodeLine>
+            <CodeLine indent={2}>
+              <Token className={plain}>feed</Token>
+              <Token className={punctuation}>: </Token>
+              <Token className={keyword}>await</Token>
+              <Token className={plain}> feed,</Token>
+            </CodeLine>
+            <CodeLine indent={1}>
+              <Token className={punctuation}>{"});"}</Token>
+            </CodeLine>
+            <CodeLine>
+              <Token className={punctuation}>{"});"}</Token>
+            </CodeLine>
+          </code>
+        </pre>
+      </div>
+
+      <div className="relative grid grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-3 border-t border-white/8 px-5 py-3.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#758197] sm:px-6">
+        <span>Request</span>
+        <span className="h-px bg-gradient-to-r from-[#617092] to-[#36425a]" />
+        <span>Handler</span>
+        <span className="h-px bg-gradient-to-r from-[#53698e] to-[#42577b]" />
+        <span>Delivery</span>
+      </div>
+    </Card>
+  )
 }
-function DemoNode({ label, value }: { label: string; value: string }) { return <div className="min-w-0 rounded-xl border border-white/8 bg-white/[0.035] px-3 py-4 text-center"><span className="block text-[10px] uppercase tracking-[.16em] text-muted-foreground">{label}</span><strong className="mt-1 block truncate text-xs">{value}</strong></div> }
-function OwnedChip({ icon: Icon, label }: { icon: typeof Box; label: string }) { return <div className="flex items-center justify-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-2 py-2.5 text-[11px] text-muted-foreground"><Icon className="size-3.5 text-emerald-300" />{label}</div> }
+
+function CodeLine({
+  children,
+  highlighted = false,
+  indent = 0,
+}: {
+  children?: ReactNode
+  highlighted?: boolean
+  indent?: number
+}) {
+  return (
+    <span
+      className={
+        highlighted
+          ? "-mx-4 block min-h-[1.72em] border-l border-[#6b86d8] bg-[#263556]/70 px-4"
+          : "block min-h-[1.72em]"
+      }
+    >
+      {indent > 0 ? "  ".repeat(indent) : null}
+      {children}
+    </span>
+  )
+}
+
+function Token({ children, className }: { children: ReactNode; className: string }) {
+  return <span className={className}>{children}</span>
+}
