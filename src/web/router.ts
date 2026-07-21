@@ -1,8 +1,4 @@
-import {
-  DuplicateRouteError,
-  InvalidRouteError,
-  MalformedPathError,
-} from "./errors.ts";
+import { DuplicateRouteError, InvalidRouteError, MalformedPathError } from "./errors.ts";
 import type { NeloHandler, NeloMiddleware } from "./types.ts";
 
 interface StaticSegment {
