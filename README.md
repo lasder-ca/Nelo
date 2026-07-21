@@ -8,44 +8,59 @@
 
 <p align="center">
   <strong>A request-ownership runtime and Web Standards framework for TypeScript.</strong><br>
-  <sub>Structured ownership for child tasks, cancellation, and scoped resources.</sub>
+  <sub>Keep child tasks, cancellation, scoped resources, and response delivery inside the request that created them.</sub>
 </p>
 
 <p align="center">
   <img alt="Status: experimental" src="https://img.shields.io/badge/status-experimental-6d7178">
-  <img alt="Phase 4 complete" src="https://img.shields.io/badge/core-phase%204%20complete-2864dc">
+  <img alt="Version: 0.2.0 alpha 1" src="https://img.shields.io/badge/version-0.2.0--alpha.1-2864dc">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6">
   <a href="./LICENSE"><img alt="Apache-2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-5bc8ad"></a>
 </p>
 
-Nelo keeps child tasks, cancellation, and scoped resources inside the request that owns them.
-Instead of letting asynchronous work escape as floating promises, Nelo gives every request an
-explicit lifetime boundary.
+<p align="center">
+  English · <a href="./README.ja.md">日本語</a> · <a href="https://nelo.lattee.jp">Website</a>
+</p>
 
-> Work created for a request must be awaited, cancelled, released, or explicitly transferred.
+Nelo treats a request as the owner of the work started for it. A handler may return a `Response`
+while tasks are still running, resources are still open, or a response body is still being
+delivered. Nelo keeps those operations inside explicit lifetime boundaries so they can be awaited,
+cancelled, released, or transferred deliberately.
+
+> Returning a `Response` is not the same as completing the request lifetime.
 
 ## Why Nelo
 
-Returning a `Response` does not necessarily mean that all request-related work has finished. A
-handler can leave tasks running, lose cancellation when a client disconnects, or keep resources
-alive longer than the request that created them.
+Ordinary asynchronous handlers can leave work behind:
 
-Nelo structures that work as explicit handler and delivery ownership scopes:
+- a promise continues after nobody is waiting for it;
+- a client disconnects, but related operations keep running;
+- a resource closes when the handler returns even though a stream still needs it;
+- failures during cleanup or delivery are lost;
+- shutdown begins while request-owned work remains active.
+
+Nelo makes the ownership of that work visible without replacing standard `Request`, `Response`,
+`Headers`, `URL`, `ReadableStream`, or `AbortSignal` APIs.
+
+## Lifetime model
 
 ```text
-Request Lifetime
-├── Handler Scope: middleware, c.fork(), c.use()
-└── Delivery Scope: Response.body, c.delivery.fork(), c.delivery.use()
+Request lifetime
+├── Handler scope
+│   ├── middleware
+│   ├── context.fork()
+│   └── context.use()
+└── Delivery scope
+    ├── Response.body
+    ├── context.delivery.fork()
+    └── context.delivery.use()
 ```
 
-When the scope closes, Nelo checks owned tasks, propagates cooperative cancellation, waits for
-settlement, and releases resources in reverse acquisition order.
+The handler scope closes after the handler finishes. The delivery scope remains active until the
+response body completes, fails, is cancelled, or the transport reports a disconnect. Owned resources
+are released once, in reverse acquisition order.
 
-## Quick start
-
-> [!IMPORTANT]
-> Nelo is currently experimental and is not published to npm yet. The package API is being developed
-> in this repository before the first public release.
+## Example
 
 ```ts
 import { Nelo } from "nelo";
@@ -62,31 +77,30 @@ app.get("/users/:id", async (context) => {
     feed: await feed,
   });
 });
-
-const response = await app.fetch(
-  new Request("https://example.test/users/42"),
-);
 ```
 
-The API uses standard `Request`, `Response`, `Headers`, `URL`, `ReadableStream`, and `AbortSignal`
-types. Runtime-specific behavior belongs in adapters rather than application handlers.
+The import above shows the intended public API. Package publication and availability are not claimed
+until the final package name is cleared.
 
-## Core primitives
+Nelo must own a task from the moment it starts. It does not attach reliable cancellation to an
+arbitrary promise after that promise is already running.
 
-| Primitive                                | Purpose                                                         |
-| ---------------------------------------- | --------------------------------------------------------------- |
-| `app.fetch(request)`                     | Runs routing, middleware, the handler, and owned body delivery. |
-| `context.fork(name, operation)`          | Starts an eager `OwnedTask` bound to the current request.       |
-| `context.signal`                         | Exposes cooperative cancellation to request-owned work.         |
-| `context.use(name, acquire, cleanup?)`   | Acquires a resource and releases it once in LIFO order.         |
-| `context.delivery.use(cleanup)`          | Keeps a resource alive until response-body delivery ends.       |
-| `context.delivery.fork(name, operation)` | Starts work owned by response delivery.                         |
-| `LifetimeScope#createChild(name)`        | Creates an explicit child ownership boundary.                   |
+## Core API
+
+| API                                      | Purpose                                                               |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `app.fetch(request)`                     | Runs routing, middleware, the handler, and owned response delivery.   |
+| `context.fork(name, operation)`          | Starts an eager task owned by the current request.                    |
+| `context.signal`                         | Exposes cooperative cancellation to request-owned work.               |
+| `context.use(name, acquire, cleanup?)`   | Acquires a handler-owned resource and releases it once in LIFO order. |
+| `context.delivery.fork(name, operation)` | Starts work owned by response delivery.                               |
+| `context.delivery.use(cleanup)`          | Keeps cleanup attached to the delivery scope.                         |
+| `LifetimeScope#createChild(name)`        | Creates an explicit child ownership boundary.                         |
 
 ### Owned tasks
 
-`context.fork()` returns an awaitable `OwnedTask`. A task is owned from creation and retains its
-name, ancestry, settlement state, and failure for diagnostics.
+`context.fork()` returns an awaitable `OwnedTask`. The task retains its name, parent scope,
+settlement state, and failure for diagnostics.
 
 ```ts
 const profile = context.fork("profile", (signal) => loadProfile({ signal }));
@@ -94,21 +108,16 @@ const profile = context.fork("profile", (signal) => loadProfile({ signal }));
 return context.json(await profile);
 ```
 
-If a task is neither observed nor explicitly transferred before its scope completes, Nelo cancels it
-and reports `NELO_TASK_001` instead of silently accepting a floating promise.
+If an owned task is neither observed nor transferred before its scope completes, Nelo requests
+cancellation and reports `NELO_TASK_001` instead of silently accepting detached work.
 
 ### Cooperative cancellation
 
-Nelo preserves the first typed `CancellationReason` and propagates one `AbortSignal` through child
-scopes and owned tasks.
-
-Cancellation remains cooperative: JavaScript cannot forcibly stop an arbitrary promise. Operations
-must observe the supplied signal and stop safely.
+Nelo preserves the first typed cancellation reason and propagates one `AbortSignal` through child
+scopes and owned tasks. Cancellation remains cooperative: JavaScript cannot forcibly stop an
+arbitrary promise, so operations must observe the supplied signal and stop safely.
 
 ### Scoped resources
-
-Resources implementing `Symbol.asyncDispose` or `Symbol.dispose` can be registered directly. Other
-values require an explicit cleanup callback.
 
 ```ts
 const connection = await context.use(
@@ -123,127 +132,93 @@ and cleanup failures remain observable and are aggregated when necessary.
 
 ### Delivery-owned resources
 
-`context.use()` remains handler-owned and is cleaned when the handler returns. A stream producer
-that needs a resource after that point must register its cleanup with `context.delivery.use()`.
+A resource created for a response stream often needs to remain open after the handler returns.
+Register its cleanup with the delivery scope:
 
 ```ts
 app.get("/stream", async (context) => {
   const resource = await openResource();
   context.delivery.use(() => resource.close());
+
   return new Response(resource.stream());
 });
 ```
 
-The Delivery Scope closes after body completion, cancellation, producer error, client disconnect, or
-server shutdown. Cleanup is exactly once and LIFO. The first typed `NeloAbortReason` is retained.
-Diagnostics expose immutable `handling`, `delivering`, and terminal snapshots.
+The delivery scope closes after body completion, cancellation, producer failure, client disconnect,
+or server shutdown.
 
 ## Web framework surface
 
 The current portable surface includes:
 
-- standard Fetch-style `app.fetch(Request)` execution;
+- Fetch-style `app.fetch(Request)` execution;
 - static routes and named path parameters;
 - method matching with `404` and `405` handling;
-- deterministic static-over-parameter route precedence;
+- deterministic static-over-parameter precedence;
 - global and route middleware;
 - single-use middleware `next()` enforcement;
-- centralized and customizable error handling;
-- `json`, `text`, `fork`, `use`, and `delivery` context helpers;
-- bounded settlement diagnostics for tasks that ignore cancellation;
+- centralized error handling;
+- `json`, `text`, `fork`, `use`, and `delivery` helpers;
+- bounded diagnostics for tasks that ignore cancellation;
 - handler- and delivery-phase cleanup failure reporting.
 
-```ts
-app.use(async (_context, next) => {
-  const response = await next();
-  response.headers.set("x-powered-by", "Nelo");
-  return response;
-});
-
-app.get("/health", (context) => context.json({ ok: true }));
-```
-
-Each path segment is percent-decoded once. Encoded slashes stay inside one parameter value.
-Semantically duplicate parameter routes are rejected, including `/users/:id` followed by
-`/users/:name` for the same method.
-
-## Runtime capabilities
+## Runtime support
 
 | Capability                    | Portable core | Node.js | Cloudflare |  Deno   |   Bun   |
 | ----------------------------- | :-----------: | :-----: | :--------: | :-----: | :-----: |
 | Request scopes                |      ✅       |    —    |     —      |   ✅    |    —    |
 | Owned tasks                   |      ✅       |    —    |     —      |   ✅    |    —    |
 | Resource cleanup              |      ✅       |    —    |     —      |   ✅    |    —    |
-| Client disconnect integration |       —       |   ✅    |  Planned   | Planned | Planned |
 | Response delivery tracking    |      ✅       |   ✅    |  Planned   | Planned | Planned |
+| Client disconnect integration |       —       |   ✅    |  Planned   | Planned | Planned |
 | Graceful shutdown             |       —       |   ✅    |  Planned   | Planned | Planned |
 | Deferred work                 |       —       | Planned |  Planned   | Planned | Planned |
 
-The portable core wraps `Response.body` to close Delivery Scope at the observable body boundary. The
-Node adapter additionally maps transport disconnect, backpressure, and shutdown into that model.
+The portable core wraps `Response.body` at the observable body boundary. The Node.js adapter also
+maps transport disconnects, backpressure, and shutdown into the same lifetime model.
 
-## What Nelo does not claim yet
+## Current limits
+
+Nelo does not currently claim:
 
 - forced cancellation of arbitrary promises;
-- confirmation that a client physically received every response byte;
+- proof that a client physically received every response byte;
 - durable or exactly-once background execution;
-- complete Cloudflare, Deno, or Bun runtime adapters.
+- complete Cloudflare, Deno, or Bun adapters;
+- identical transport behavior across every runtime.
 
-These boundaries are intentional. Runtime behavior will only be documented as supported after the
-corresponding adapter and real transport tests exist.
-
-## Project layout
-
-```text
-mod.ts
-src/
-├── lifetime/
-│   ├── cancellation.ts
-│   ├── scope.ts
-│   ├── task.ts
-│   └── resource-stack.ts
-└── web/
-    ├── app.ts
-    ├── context.ts
-    ├── middleware.ts
-    └── router.ts
-examples/
-docs/adr/
-```
+Runtime behavior is documented as supported only after the corresponding adapter and transport tests
+exist.
 
 ## Development
 
-Nelo uses Deno for formatting, linting, type checking, and tests. npm and TypeScript emit the ESM
-package and declaration files.
+The public package name is not final. Build and test the current source checkout directly:
 
 ```bash
 git clone https://github.com/lasder-ca/Nelo.git
 cd Nelo
-
 npm install
 
-deno task fmt
-deno task lint
-deno task check
-deno task test
+npm run format
+npm run lint
+npm run typecheck
 npm test
 npm run build
 npm run check:package
-npm --cache /tmp/nelo-npm-cache pack --dry-run
+npm run check:tarball
+npm run pack:dry-run
 ```
-
-The current package name is `nelo`. The repository import map also accepts `@latteworkspace/nelo` as
-the preferred scoped fallback. Neither package is published yet.
 
 ## Roadmap
 
-- **Phase 1 — complete:** lifetime scopes, owned tasks, typed cancellation, resource cleanup.
-- **Phase 2 — complete:** Fetch-style application API, router, middleware, context, error boundary.
-- **Phase 3 — complete:** Node.js adapter, real socket disconnect tests, delivery tracking, graceful
-  shutdown, and GitHub CI.
-- **Phase 4 — complete:** separate Handler/Delivery scopes, delivery-owned resources and tasks,
-  typed abort reasons, cleanup-failure aggregation, and request diagnostics.
-- **Later:** Cloudflare, Deno, and Bun adapters; explicit deferred work; diagnostics tooling.
+- **Phase 1 — complete:** lifetime scopes, owned tasks, typed cancellation, and resource cleanup.
+- **Phase 2 — complete:** Fetch-style application API, routing, middleware, context, and error
+  handling.
+- **Phase 3 — complete:** Node.js adapter, real-socket disconnect tests, delivery tracking, graceful
+  shutdown, and CI.
+- **Phase 4 — complete:** separate handler and delivery scopes, delivery-owned work, typed abort
+  reasons, cleanup-failure aggregation, and request diagnostics.
+- **Later:** additional runtime adapters, explicit deferred work, and diagnostic tooling.
 
 ## License
 
