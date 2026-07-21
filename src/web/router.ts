@@ -1,4 +1,8 @@
-import { DuplicateRouteError, InvalidRouteError, MalformedPathError } from "./errors.ts";
+import {
+  DuplicateRouteError,
+  InvalidRouteError,
+  MalformedPathError,
+} from "./errors.ts";
 import type { NeloHandler, NeloMiddleware } from "./types.ts";
 
 interface StaticSegment {
@@ -82,7 +86,10 @@ export class Router {
     const normalizedMethod = normalizeMethod(method);
     const pathSegments = decodePath(pathname);
     const pathCandidates = this.#routes
-      .map((route) => ({ route, params: matchSegments(route.segments, pathSegments) }))
+      .map((route) => ({
+        route,
+        params: matchSegments(route.segments, pathSegments),
+      }))
       .filter((candidate) => candidate.params !== undefined);
 
     const methodCandidates = pathCandidates
@@ -100,7 +107,8 @@ export class Router {
     if (pathCandidates.length > 0) {
       return {
         type: "method_not_allowed",
-        allowed: [...new Set(pathCandidates.map(({ route }) => route.method))].sort(),
+        allowed: [...new Set(pathCandidates.map(({ route }) => route.method))]
+          .sort(),
       };
     }
     return { type: "not_found" };
@@ -125,7 +133,9 @@ function normalizeMethod(method: string): string {
 }
 
 function parseRoutePath(path: string): readonly RouteSegment[] {
-  if (!path.startsWith("/")) throw new InvalidRouteError(`route path must start with "/": ${path}`);
+  if (!path.startsWith("/")) {
+    throw new InvalidRouteError(`route path must start with "/": ${path}`);
+  }
   return decodePath(path).map((segment) => {
     if (!segment.startsWith(":")) return { type: "static", value: segment };
     const name = segment.slice(1);
