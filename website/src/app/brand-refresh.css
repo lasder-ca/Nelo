@@ -1,0 +1,128 @@
+:root {
+  --font-menu: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", sans-serif;
+}
+
+html[lang="ja"] {
+  --font-menu: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Noto Sans JP", sans-serif;
+}
+
+html[lang="ko"] {
+  --font-menu: "Apple SD Gothic Neo", Pretendard, "Malgun Gothic", "Noto Sans KR", sans-serif;
+}
+
+html[lang="zh-CN"] {
+  --font-menu: "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+
+html[lang="ja"] body,
+html[lang="ko"] body,
+html[lang="zh-CN"] body {
+  font-family: var(--font-menu);
+}
+
+.glass-brand {
+  font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", sans-serif;
+  font-weight: 720;
+  letter-spacing: -.026em;
+}
+
+.glass-brand img,
+.hero-mark img {
+  filter: drop-shadow(0 8px 16px rgba(31, 77, 184, .22));
+}
+
+.desktop-nav a,
+.mobile-menu nav a,
+.language-picker select {
+  font-family: var(--font-menu);
+  font-optical-sizing: auto;
+  font-synthesis: none;
+}
+
+.desktop-nav a {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -.006em;
+}
+
+.language-picker {
+  position: relative;
+  width: 108px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  overflow: hidden;
+  transition: color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.language-picker:hover {
+  color: var(--fg);
+  background: var(--surface-strong);
+  transform: translateY(-1px);
+}
+
+.language-picker select {
+  width: 100%;
+  height: 100%;
+  padding: 0 30px 0 11px;
+  appearance: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 620;
+  letter-spacing: -.005em;
+}
+
+.language-picker option {
+  color: #11151d;
+  background: #f5f7fb;
+}
+
+.language-picker > svg {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+}
+
+.mobile-language-picker {
+  width: 100%;
+  margin-top: 22px;
+  background: var(--surface-soft);
+}
+
+.mobile-language-picker select {
+  font-size: 13px;
+}
+
+html:not([lang="en"]) .hero-copy h1,
+html:not([lang="en"]) .page-hero h1,
+html:not([lang="en"]) .docs-hero h1,
+html:not([lang="en"]) .summary-heading h2 {
+  line-height: .98;
+  letter-spacing: -.045em;
+}
+
+html[lang="ja"] .eyebrow,
+html[lang="ko"] .eyebrow,
+html[lang="zh-CN"] .eyebrow {
+  letter-spacing: .09em;
+  text-transform: none;
+}
+
+@media (max-width: 680px) {
+  .language-picker:not(.mobile-language-picker) {
+    width: 86px;
+  }
+
+  .language-picker:not(.mobile-language-picker) select {
+    padding-left: 9px;
+    font-size: 10px;
+  }
+}

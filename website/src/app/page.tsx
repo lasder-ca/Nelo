@@ -6,27 +6,14 @@ import { SiteHeader } from "@/components/site-header";
 import { brandAssets } from "@/lib/brand";
 import { githubUrl, heroCode } from "@/lib/content";
 import { getRepositorySnapshot } from "@/lib/github";
+import { getDictionary } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
-const features = [
-  {
-    icon: CircleDot,
-    title: "Owned tasks",
-    text: "Every child operation has a parent, a signal, and a finish line.",
-  },
-  {
-    icon: Braces,
-    title: "Scoped resources",
-    text: "Acquisition and cleanup stay attached to the request that uses them.",
-  },
-  {
-    icon: Radio,
-    title: "Delivery lifetime",
-    text: "The response can keep ownership after the handler has returned.",
-  },
-] as const;
+const featureIcons = [CircleDot, Braces, Radio] as const;
 
 export default async function HomePage() {
-  const repo = await getRepositorySnapshot();
+  const [repo, locale] = await Promise.all([getRepositorySnapshot(), getLocale()]);
+  const t = getDictionary(locale);
 
   return (
     <main>
@@ -36,21 +23,18 @@ export default async function HomePage() {
         <div className="hero-copy">
           <div className="hero-mark">
             <img src={brandAssets.icon} alt="Nelo" width={42} height={42} />
-            <span>Request ownership for TypeScript</span>
+            <span>{t.home.badge}</span>
           </div>
-          <h1>Every request<br />owns its work.</h1>
-          <p>
-            Nelo keeps child tasks, cancellation, resources, and response delivery inside one explicit lifecycle.
-            Ordinary Web Standards on the outside. Structured ownership underneath.
-          </p>
+          <h1>{t.home.title[0]}<br />{t.home.title[1]}</h1>
+          <p>{t.home.description}</p>
           <div className="hero-actions">
-            <Link href="/docs" className="glass-button primary">Read the docs <ArrowRight size={15} /></Link>
+            <Link href="/docs" className="glass-button primary">{t.home.readDocs} <ArrowRight size={15} /></Link>
             <a href={githubUrl} className="glass-button secondary"><Github size={15} /> GitHub</a>
           </div>
           <div className="hero-facts" aria-label="Project facts">
-            <span><strong>62</strong> tests</span>
-            <span><strong>04</strong> phases</span>
-            <span><strong>{repo.stars}</strong> stars</span>
+            <span><strong>62</strong> {t.home.tests}</span>
+            <span><strong>04</strong> {t.home.phases}</span>
+            <span><strong>{repo.stars}</strong> {t.home.stars}</span>
             <span><strong>Apache</strong> 2.0</span>
           </div>
         </div>
@@ -76,31 +60,34 @@ export default async function HomePage() {
 
       <section className="home-summary page-shell">
         <div className="summary-heading">
-          <p className="eyebrow">One model, three boundaries</p>
-          <h2>Make lifetime visible.</h2>
-          <Link href="/docs/concepts/request-ownership">Understand the model <ArrowRight size={14} /></Link>
+          <p className="eyebrow">{t.home.summaryEyebrow}</p>
+          <h2>{t.home.summaryTitle}</h2>
+          <Link href="/docs/concepts/request-ownership">{t.home.understand} <ArrowRight size={14} /></Link>
         </div>
         <div className="feature-grid">
-          {features.map(({ icon: Icon, title, text }, index) => (
-            <article className="feature-glass" key={title}>
-              <div className="feature-top"><span>0{index + 1}</span><Icon size={18} /></div>
-              <h3>{title}</h3>
-              <p>{text}</p>
-            </article>
-          ))}
+          {t.home.features.map(({ title, text }, index) => {
+            const Icon = featureIcons[index]!;
+            return (
+              <article className="feature-glass" key={title}>
+                <div className="feature-top"><span>0{index + 1}</span><Icon size={18} /></div>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            );
+          })}
         </div>
       </section>
 
       <section className="page-links page-shell" aria-label="Explore Nelo">
         <Link href="/docs" className="page-link-card large">
-          <div><span>Docs</span><h2>Start with the ownership model.</h2></div>
+          <div><span>{t.nav.docs}</span><h2>{t.home.cards.docs}</h2></div>
           <ArrowRight size={22} />
         </Link>
         <Link href="/examples" className="page-link-card">
-          <Sparkles size={19} /><div><span>Examples</span><h3>Copy focused route patterns.</h3></div><ArrowRight size={18} />
+          <Sparkles size={19} /><div><span>{t.nav.examples}</span><h3>{t.home.cards.examples}</h3></div><ArrowRight size={18} />
         </Link>
         <Link href="/roadmap" className="page-link-card">
-          <Layers3 size={19} /><div><span>Roadmap</span><h3>See what is verified next.</h3></div><ArrowRight size={18} />
+          <Layers3 size={19} /><div><span>{t.nav.roadmap}</span><h3>{t.home.cards.roadmap}</h3></div><ArrowRight size={18} />
         </Link>
       </section>
 
