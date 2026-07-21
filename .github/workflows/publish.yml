@@ -44,27 +44,45 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set +e
-          set -o pipefail
           log_file="$(mktemp)"
+          failed_stage="unknown"
 
-          {
-            npm install --global npm@latest &&
-            npm ci &&
-            npm run format:check &&
-            npm run lint &&
-            npm run typecheck &&
-            npm test &&
-            npm run build &&
-            npm run check:package &&
-            npm run check:tarball &&
-            version="$(node -p "require('./package.json').version")" &&
+          run_stage() {
+            local stage="$1"
+            shift
+            echo "==> ${stage}"
+            "$@"
+            local result=$?
+            if [ "${result}" -ne 0 ]; then
+              failed_stage="${stage}"
+            fi
+            return "${result}"
+          }
+
+          publish_package() {
+            local version
+            version="$(node -p "require('./package.json').version")" || return $?
             if npm view "nelo@${version}" version >/dev/null 2>&1; then
               echo "nelo@${version} is already published"
-            else
-              npm publish --access public --tag next --provenance
+              return 0
             fi
-          } 2>&1 | tee "${log_file}"
-          exit_code=${PIPESTATUS[0]}
+            npm publish --access public --tag next --provenance
+          }
+
+          {
+            run_stage npm-cli npm install --global npm@latest &&
+            run_stage install npm ci &&
+            run_stage format npm run format:check &&
+            run_stage lint npm run lint &&
+            run_stage typecheck npm run typecheck &&
+            run_stage test npm test &&
+            run_stage build npm run build &&
+            run_stage package-smoke npm run check:package &&
+            run_stage tarball-smoke npm run check:tarball &&
+            run_stage publish publish_package
+          } >"${log_file}" 2>&1
+          exit_code=$?
+          cat "${log_file}"
 
           if [ "${exit_code}" -eq 0 ]; then
             state="success"
@@ -72,11 +90,11 @@ jobs:
             description="Nelo prerelease is available on npm"
           else
             state="failure"
-            error_line="$(grep -E 'npm error|error:|Error:' "${log_file}" | tail -n 1 | tr '\n\r\"/' '    ' | sed 's/[[:space:]]\+/ /g' | cut -c1-72)"
+            error_line="$(grep -E 'npm error|error:|Error:' "${log_file}" | tail -n 1 | tr '\n\r\"/' '    ' | sed 's/[[:space:]]\+/ /g' | cut -c1-54)"
             if [ -z "${error_line}" ]; then
-              error_line="unknown failure"
+              error_line="failed"
             fi
-            context="npm/publish: ${error_line}"
+            context="npm/publish: ${failed_stage}: ${error_line}"
             description="Nelo npm publish failed"
           fi
 
