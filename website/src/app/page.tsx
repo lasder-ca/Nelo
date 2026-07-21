@@ -1,10 +1,16 @@
 import Link from "next/link";
-import { ArrowRight, Boxes, Braces, Check, Github, Network, Radio, ShieldCheck, Sparkles, Star, Workflow } from "lucide-react";
+import {
+  ArrowRight,
+  Braces,
+  Check,
+  CircleDot,
+  Github,
+  Radio,
+  TerminalSquare,
+} from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CodeBlock } from "@/components/code-block";
-import { CodeShowcase } from "@/components/code-showcase";
-import { OwnershipMap } from "@/components/ownership-map";
 import { RequestLab } from "@/components/request-lab";
 import { RuntimeMatrix } from "@/components/runtime-matrix";
 import { Roadmap } from "@/components/roadmap";
@@ -13,8 +19,32 @@ import { githubUrl, heroCode } from "@/lib/content";
 import { brandAssets } from "@/lib/brand";
 
 function formatCount(value: number) {
-  return new Intl.NumberFormat("en-US", { notation: value >= 1000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat("en-US", {
+    notation: value >= 1000 ? "compact" : "standard",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
+
+const principles = [
+  {
+    index: "01",
+    title: "Child work has an owner.",
+    body: "context.fork() creates a named task that belongs to the current request. It cannot quietly become an untracked promise.",
+    code: 'context.fork("profile", (signal) => loadProfile({ signal }))',
+  },
+  {
+    index: "02",
+    title: "Cancellation keeps its reason.",
+    body: "The same cooperative signal travels through child scopes while the first abort reason remains available for diagnostics.",
+    code: "context.signal.reason // client_disconnect",
+  },
+  {
+    index: "03",
+    title: "Cleanup runs once.",
+    body: "Resources are released in reverse acquisition order after the work that owns them has settled.",
+    code: 'context.use("database", connect, (db) => db.close())',
+  },
+] as const;
 
 export default async function HomePage() {
   const repo = await getRepositorySnapshot();
@@ -22,126 +52,144 @@ export default async function HomePage() {
   return (
     <main>
       <SiteHeader />
-      <div className="page-ambient" aria-hidden="true"><div className="ambient-orb ambient-one" /><div className="ambient-orb ambient-two" /></div>
 
-      <section className="hero-shell section-shell" id="top">
-        <div className="hero-grid-bg" aria-hidden="true" />
-        <div className="relative z-10 grid items-center gap-14 lg:grid-cols-[.92fr_1.08fr]">
-          <div className="pt-24 lg:pt-20">
-            <a href={`${githubUrl}#roadmap`} className="announcement-pill"><span className="announcement-dot" /> Phase 4 complete <ArrowRight size={13} /></a>
-            <h1 className="hero-title">Every request<br /><span>owns</span> its work.</h1>
-            <p className="hero-copy">A Web Standards framework for TypeScript that keeps child tasks, cancellation, and scoped resources inside explicit Handler and Delivery lifetimes.</p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="/docs" className="primary-button"><Sparkles size={16} /> Start building</Link>
-              <a href={githubUrl} className="secondary-button"><Github size={16} /> View on GitHub</a>
-            </div>
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs text-[var(--muted)]">
-              <span className="inline-flex items-center gap-2"><Check size={13} className="text-blue-400" /> Apache-2.0</span>
-              <span className="inline-flex items-center gap-2"><Check size={13} className="text-blue-400" /> TypeScript strict</span>
-              <span className="inline-flex items-center gap-2"><Check size={13} className="text-blue-400" /> Node.js ready</span>
-            </div>
+      <section className="hero section-shell" id="top">
+        <div className="hero-copy-block">
+          <div className="project-mark">
+            <img src={brandAssets.icon} alt="Nelo" width={40} height={40} />
+            <span>Request ownership runtime</span>
+          </div>
+          <h1>Every request owns its work.</h1>
+          <p>
+            Nelo is a Web Standards framework for TypeScript that makes child tasks,
+            cancellation, resource cleanup, and response delivery explicit parts of the request lifecycle.
+          </p>
+          <div className="hero-actions">
+            <Link href="/docs" className="primary-button">
+              Read the docs <ArrowRight size={15} />
+            </Link>
+            <a href={githubUrl} className="secondary-button">
+              <Github size={15} /> GitHub
+            </a>
+          </div>
+        </div>
+
+        <div className="hero-code">
+          <div className="hero-code-label">
+            <span>app.ts</span>
+            <span>Handler Scope</span>
+          </div>
+          <CodeBlock code={heroCode} filename="app.ts" compact />
+        </div>
+      </section>
+
+      <section className="status-strip" aria-label="Project status">
+        <div className="section-shell status-grid">
+          <div><span>phase</span><strong>04 complete</strong></div>
+          <div><span>tests</span><strong>62 passing</strong></div>
+          <div><span>repository</span><strong>{formatCount(repo.stars)} stars · {repo.openIssues} issues</strong></div>
+          <div><span>license</span><strong>Apache-2.0</strong></div>
+        </div>
+      </section>
+
+      <section className="section-shell section-block" id="concept">
+        <div className="section-index">01 / Model</div>
+        <div className="section-content">
+          <div className="section-intro">
+            <p className="eyebrow">Request ownership</p>
+            <h2>Async work needs a boundary.</h2>
+            <p>
+              A handler returning does not always mean the request is finished. Nelo separates work owned by
+              the handler from work required while the response body is still being delivered.
+            </p>
           </div>
 
-          <div className="relative min-w-0 pt-2 lg:pt-24">
-            <div className="hero-console-wrap">
-              <div className="hero-console-glow" />
-              <CodeBlock code={heroCode} filename="app.ts" compact />
-              <div className="hero-lifetime-badge">
-                <span className="relative"><span className="absolute inset-0 animate-pulseRing rounded-full bg-emerald-400/30" /><span className="relative block h-2.5 w-2.5 rounded-full bg-emerald-400" /></span>
-                Handler settled · Delivery active
+          <div className="lifetime-board">
+            <div className="lifetime-row">
+              <div className="lifetime-number">A</div>
+              <div>
+                <strong>Handler Scope</strong>
+                <p>middleware · route handler · context.fork() · context.use()</p>
               </div>
+              <span>settles first</span>
             </div>
-            <div className="hero-brand-card animate-float">
-              <img src={brandAssets.icon} alt="Nelo icon" width={78} height={78} className="rounded-[22px]" />
-              <div><p className="text-sm font-semibold">Request ownership</p><p className="mt-1 text-[11px] text-white/45">Await · cancel · release</p></div>
+            <div className="lifetime-divider" />
+            <div className="lifetime-row">
+              <div className="lifetime-number">B</div>
+              <div>
+                <strong>Delivery Scope</strong>
+                <p>Response.body · delivery.fork() · delivery.use()</p>
+              </div>
+              <span>closes last</span>
             </div>
           </div>
+
+          <div className="principle-list">
+            {principles.map((item) => (
+              <article key={item.index} className="principle-row">
+                <span className="principle-index">{item.index}</span>
+                <div>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </div>
+                <code>{item.code}</code>
+              </article>
+            ))}
+          </div>
         </div>
-        <div className="hero-bottom-line" />
       </section>
 
-      <section className="section-shell py-14 sm:py-20" aria-label="Project metrics">
-        <div className="metrics-strip">
-          <div><span className="metric-value">04</span><span className="metric-label">Phases complete</span></div>
-          <div><span className="metric-value">62</span><span className="metric-label">Passing tests</span></div>
-          <div><span className="metric-value">{formatCount(repo.stars)}</span><span className="metric-label"><Star size={12} /> GitHub stars</span></div>
-          <div><span className="metric-value">2</span><span className="metric-label">Lifetime scopes</span></div>
-        </div>
-      </section>
-
-      <section className="section-shell py-20 sm:py-28" id="concept">
-        <div className="section-heading">
-          <div><p className="eyebrow">Structured ownership</p><h2>Async work should have<br />somewhere to belong.</h2></div>
-          <p>Nelo turns request lifetime into visible primitives. Work created for a request must be awaited, cancelled, released, or explicitly transferred.</p>
-        </div>
-
-        <div className="bento-grid mt-12">
-          <OwnershipMap />
+      <section className="section-shell section-block" id="api">
+        <div className="section-index">02 / Live API</div>
+        <div className="section-content">
+          <div className="section-intro compact-intro">
+            <p className="eyebrow">Server-backed lifecycle demo</p>
+            <h2>Run the boundary.</h2>
+            <p>
+              The demo calls a real Next.js route and returns the Handler and Delivery timeline for success,
+              disconnect, and producer failure.
+            </p>
+          </div>
           <RequestLab />
+        </div>
+      </section>
 
-          <div className="bento-card p-6 sm:p-7">
-            <div className="flex items-start justify-between"><span className="feature-icon"><Workflow size={19} /></span><span className="mini-chip">OwnedTask</span></div>
-            <h3 className="mt-8 text-xl font-semibold">Child tasks stay inside the request.</h3>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Named tasks retain ancestry, settlement state, and failures for diagnostics.</p>
-            <div className="task-stack mt-7"><div><span /><code>request/users/:id</code></div><div><span /><code>task/user</code></div><div><span /><code>task/feed</code></div></div>
+      <section className="section-shell section-block" id="surface">
+        <div className="section-index">03 / Surface</div>
+        <div className="section-content">
+          <div className="section-intro compact-intro">
+            <p className="eyebrow">Small API</p>
+            <h2>Normal TypeScript, explicit ownership.</h2>
           </div>
-
-          <div className="bento-card p-6 sm:p-7">
-            <div className="flex items-start justify-between"><span className="feature-icon"><ShieldCheck size={19} /></span><span className="mini-chip">AbortSignal</span></div>
-            <h3 className="mt-8 text-xl font-semibold">Cancellation keeps its reason.</h3>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">One cooperative signal moves through child scopes while preserving the first typed reason.</p>
-            <div className="reason-cloud mt-7">{["client_disconnect", "server_shutdown", "delivery_error"].map((reason) => <span key={reason}>{reason}</span>)}</div>
+          <div className="api-list">
+            <div><span><TerminalSquare size={17} /> Owned tasks</span><code>context.fork(name, operation)</code></div>
+            <div><span><CircleDot size={17} /> Cancellation</span><code>context.signal</code></div>
+            <div><span><Braces size={17} /> Resources</span><code>context.use(name, acquire, cleanup)</code></div>
+            <div><span><Radio size={17} /> Delivery</span><code>context.delivery.fork() / use()</code></div>
           </div>
-
-          <div className="bento-card p-6 sm:p-7">
-            <div className="flex items-start justify-between"><span className="feature-icon"><Boxes size={19} /></span><span className="mini-chip">LIFO</span></div>
-            <h3 className="mt-8 text-xl font-semibold">Cleanup is deterministic.</h3>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Resources close exactly once, in reverse acquisition order, after owned work settles.</p>
-            <div className="cleanup-list mt-7"><span>03 cache</span><span>02 database</span><span>01 tracing</span></div>
-          </div>
-
-          <div className="bento-card relative overflow-hidden p-6 sm:p-7">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/[.06] to-emerald-400/[.025]" />
-            <div className="relative">
-              <div className="flex items-start justify-between"><span className="feature-icon"><Network size={19} /></span><span className="live-dot"><span /></span></div>
-              <h3 className="mt-8 text-xl font-semibold">Live repository signal.</h3>
-              <div className="mt-6 grid grid-cols-3 gap-2">
-                <div className="repo-stat"><strong>{formatCount(repo.stars)}</strong><span>stars</span></div>
-                <div className="repo-stat"><strong>{formatCount(repo.forks)}</strong><span>forks</span></div>
-                <div className="repo-stat"><strong>{repo.openIssues}</strong><span>issues</span></div>
-              </div>
-              <a href={githubUrl} className="mt-6 inline-flex items-center gap-2 text-xs font-medium text-blue-400">lasder-ca/Nelo <ArrowRight size={13} /></a>
-            </div>
+          <div className="standards-row">
+            {["Request", "Response", "ReadableStream", "AbortSignal"].map((item) => (
+              <span key={item}><Check size={12} /> {item}</span>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="section-shell py-20 sm:py-28" id="api">
-        <div className="section-heading">
-          <div><p className="eyebrow">Core API</p><h2>Small surface.<br />Explicit lifetime.</h2></div>
-          <p>Each primitive says who owns the work and when it must settle. The code remains normal TypeScript built around Request, Response, ReadableStream, and AbortSignal.</p>
-        </div>
-        <CodeShowcase />
+      <section className="section-shell section-block" id="runtimes">
+        <div className="section-index">04 / Runtimes</div>
+        <div className="section-content"><RuntimeMatrix /></div>
       </section>
 
-      <section className="section-shell py-20 sm:py-28"><RuntimeMatrix /></section>
       <Roadmap />
 
-      <section className="section-shell pb-20 pt-8 sm:pb-28">
-        <div className="cta-panel">
-          <div className="cta-grid" aria-hidden="true" />
-          <div className="cta-brand-asset cta-brand-left cta-ghost-card" aria-hidden="true"><span>context.fork()</span><b>owned task</b></div>
-          <div className="cta-brand-asset cta-brand-right cta-ghost-card" aria-hidden="true"><span>delivery scope</span><b>cleanup once</b></div>
-          <img src={brandAssets.icon} alt="" width={88} height={88} className="relative z-10 rounded-[26px] shadow-2xl" />
-          <div className="relative z-10 max-w-2xl text-center">
-            <p className="eyebrow">Experimental, intentionally</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-[-.045em] sm:text-5xl">Make request lifetime part of the program.</h2>
-            <p className="mx-auto mt-5 max-w-xl text-sm leading-6 text-[var(--muted)]">Explore the current API, run the examples, and follow the runtime adapter work before the first npm release.</p>
-            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-              <Link href="/docs" className="primary-button"><Braces size={16} /> Read the docs</Link>
-              <Link href="/examples" className="secondary-button"><Radio size={16} /> Browse examples</Link>
-            </div>
-          </div>
+      <section className="section-shell final-callout">
+        <div>
+          <p className="eyebrow">Experimental software</p>
+          <h2>Make request lifetime part of the program.</h2>
+        </div>
+        <div className="final-actions">
+          <Link href="/docs" className="primary-button">Documentation <ArrowRight size={15} /></Link>
+          <Link href="/examples" className="secondary-button">Examples</Link>
         </div>
       </section>
 
