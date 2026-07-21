@@ -11,36 +11,15 @@ const consumer = join(temporaryRoot, "consumer");
 const npmCache = join(temporaryRoot, "npm-cache");
 let archive;
 
-function getPackedFilename(value) {
-  if (Array.isArray(value)) {
-    return value[0]?.filename;
-  }
-
-  if (value !== null && typeof value === "object") {
-    if (typeof value.filename === "string") {
-      return value.filename;
-    }
-
-    for (const key of ["packages", "results"]) {
-      const entries = value[key];
-      if (Array.isArray(entries) && typeof entries[0]?.filename === "string") {
-        return entries[0].filename;
-      }
-    }
-  }
-
-  return undefined;
-}
-
 try {
   await mkdir(consumer);
   const packed = await execFileAsync(
     "npm",
-    ["pack", "--json", "--cache", npmCache],
+    ["pack", "--silent", "--cache", npmCache],
     { cwd: repository },
   );
-  const filename = getPackedFilename(JSON.parse(packed.stdout));
-  if (filename === undefined) {
+  const filename = packed.stdout.trim().split(/\r?\n/).filter(Boolean).at(-1);
+  if (filename === undefined || !filename.endsWith(".tgz")) {
     throw new Error("npm pack did not return an archive filename");
   }
   archive = join(repository, filename);
