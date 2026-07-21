@@ -1,58 +1,11 @@
-import type { Metadata } from "next";
-import { Check, CircleDashed, ShieldCheck } from "lucide-react";
-import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-
-export const metadata: Metadata = { title: "Roadmap" };
-
+import { SiteFooter } from "@/components/site-footer";
+export const metadata = { title: "Roadmap" };
 const phases = [
-  {
-    number: "01—04",
-    state: "Complete",
-    title: "Ownership core and Node transport",
-    body: "Request scopes, owned tasks, deterministic cleanup, Handler and Delivery separation, typed abort reasons, diagnostics, and real-socket tests.",
-    complete: true,
-  },
-  {
-    number: "Next",
-    state: "Planned",
-    title: "Adapter contract and diagnostics ergonomics",
-    body: "Clarify runtime obligations, improve inspection output, and publish more delivery-focused examples before adding claims.",
-    complete: false,
-  },
-  {
-    number: "Later",
-    state: "Planned",
-    title: "Verified runtime expansion",
-    body: "Cloudflare, Deno, and Bun adapters only after disconnect, streaming, cleanup, and shutdown behavior can be tested honestly.",
-    complete: false,
-  },
-] as const;
-
-export default function RoadmapPage() {
-  return (
-    <main>
-      <SiteHeader />
-      <section className="page-hero page-shell roadmap-hero">
-        <p className="eyebrow">Roadmap</p>
-        <h1>Verified before advertised.</h1>
-        <p>Nelo separates implemented behavior from planned adapter claims. A runtime appears as supported only after its transport behavior is covered by real tests.</p>
-      </section>
-
-      <section className="roadmap-timeline page-shell">
-        {phases.map((phase) => (
-          <article className={`roadmap-card glass-surface ${phase.complete ? "complete" : "planned"}`} key={phase.number}>
-            <div className="roadmap-index">{phase.complete ? <Check size={17} /> : <CircleDashed size={17} />}<span>{phase.number}</span></div>
-            <div><small>{phase.state}</small><h2>{phase.title}</h2><p>{phase.body}</p></div>
-          </article>
-        ))}
-      </section>
-
-      <section className="roadmap-principle page-shell glass-surface">
-        <ShieldCheck size={22} />
-        <div><span>Release rule</span><h2>No capability badge without a reproducible test.</h2></div>
-      </section>
-      <SiteFooter />
-    </main>
-  );
-}
+  ["01", "Ownership core", "Complete", "Lifetime scopes, owned tasks, typed cancellation, and deterministic cleanup."],
+  ["02", "Portable web surface", "Complete", "Router, middleware, context helpers, and Fetch-style application API."],
+  ["03", "Node transport", "Complete", "Real socket disconnect tests, delivery tracking, graceful shutdown, and CI."],
+  ["04", "Handler + Delivery", "Complete", "Separate lifetimes, delivery-owned work, typed abort reasons, and diagnostics."],
+  ["05", "Runtime expansion", "Planned", "Cloudflare, Deno, and Bun adapters with real transport-specific tests."],
+];
+export default function RoadmapPage(){return <main><SiteHeader/><div className="page-shell roadmap-page"><header><p className="eyebrow">Roadmap</p><h1>Claims follow tests.</h1><p>Nelo moves phase by phase. A runtime is listed as supported only after its transport behavior is verified.</p></header><div className="roadmap-list">{phases.map(([n,t,s,d])=><article key={n} className={s === 'Planned' ? 'planned' : ''}><span>{n}</span><div><h2>{t}</h2><p>{d}</p></div><small>{s}</small></article>)}</div></div><SiteFooter/></main>}
