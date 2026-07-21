@@ -5,8 +5,9 @@ import { dirname } from "node:path";
 
 const manifest = JSON.parse(await readFile(new URL("./manifest.json", import.meta.url), "utf8"));
 let encoded = "";
-for (let index = 0; index < manifest.chunks; index++) {
-  encoded += (await readFile(new URL(`./chunk-${String(index).padStart(2, "0")}.txt`, import.meta.url), "utf8")).trim();
+for (const segment of manifest.segments) {
+  const value = (await readFile(new URL(`./${segment.file}`, import.meta.url), "utf8")).trim();
+  encoded += segment.encoding === "hex" ? Buffer.from(value, "hex").toString("utf8") : value;
 }
 if (encoded.length !== manifest.base64_length) throw new Error(`Bundle length mismatch: ${encoded.length}`);
 const compressed = Buffer.from(encoded, "base64");
