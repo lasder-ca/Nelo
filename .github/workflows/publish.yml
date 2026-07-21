@@ -91,7 +91,7 @@ jobs:
           else
             state="failure"
             error_code="$(sed -n 's/^npm error code //p' "${log_file}" | tail -n 1 | tr -cd 'A-Za-z0-9_-')"
-            error_detail="$(grep '^npm error' "${log_file}" | grep -v 'npm error code ' | grep -v 'complete log' | tail -n 1 | sed 's/^npm error //' | tr '\n\r\"/' '    ' | sed 's/[[:space:]]\+/ /g' | cut -c1-55)"
+            error_detail="$(grep '^npm error' "${log_file}" | grep -v 'npm error code ' | grep -v 'complete log' | head -n 1 | sed 's/^npm error //' | tr '\n\r\"/' '    ' | sed 's/[[:space:]]\+/ /g' | cut -c1-68)"
             if [ -z "${error_code}" ]; then
               error_code="ERROR"
             fi
