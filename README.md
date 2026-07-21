@@ -63,7 +63,7 @@ are released once, in reverse acquisition order.
 ## Example
 
 ```ts
-import { Nelo } from "@lasder/nelo";
+import { Nelo } from "nelo";
 
 const app = new Nelo();
 
@@ -78,6 +78,9 @@ app.get("/users/:id", async (context) => {
   });
 });
 ```
+
+The import above shows the intended public API. Package publication and availability are not claimed
+until the final package name is cleared.
 
 Nelo must own a task from the moment it starts. It does not attach reliable cancellation to an
 arbitrary promise after that promise is already running.
@@ -189,7 +192,7 @@ exist.
 
 ## Development
 
-The repository currently prepares the alpha package as `@lasder/nelo`.
+The public package name is not final. Build and test the current source checkout directly:
 
 ```bash
 git clone https://github.com/lasder-ca/Nelo.git
