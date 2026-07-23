@@ -7,6 +7,12 @@ on:
     paths:
       - '.tmp/tacz-force-drops/**'
       - '.github/workflows/tacz-force-drops-build.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.tmp/tacz-force-drops/**'
+      - '.github/workflows/tacz-force-drops-build.yml'
   workflow_dispatch:
 
 jobs:
