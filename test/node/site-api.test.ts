@@ -97,7 +97,9 @@ test("delivery cleanup follows actual Node response completion", async () => {
     ]);
     await waitForEvent(events, "delivery:cleanup");
 
-    assert.ok(eventIndex(events, "delivery:cleanup") > eventIndex(events, "delivery:body-complete"));
+    assert.ok(
+      eventIndex(events, "delivery:cleanup") > eventIndex(events, "delivery:body-complete"),
+    );
   });
 });
 
@@ -110,7 +112,9 @@ test("client disconnect cancels the owned delivery stream before cleanup", async
     const cleanup = await waitForEvent(events, "delivery:cleanup");
 
     assert.ok(eventIndex(events, "delivery:stream-cancel") >= 0);
-    assert.ok(eventIndex(events, "delivery:cleanup") > eventIndex(events, "delivery:stream-cancel"));
+    assert.ok(
+      eventIndex(events, "delivery:cleanup") > eventIndex(events, "delivery:stream-cancel"),
+    );
     assert.deepEqual(cleanup.detail, { reason: { type: "client_disconnect" } });
   });
 });
