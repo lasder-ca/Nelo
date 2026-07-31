@@ -1,9 +1,4 @@
-import {
-  assertEquals,
-  assertFalse,
-  assertInstanceOf,
-  assertThrows,
-} from "@std/assert";
+import { assertEquals, assertFalse, assertInstanceOf, assertThrows } from "@std/assert";
 import {
   InvalidDeadlineError,
   LifetimeScope,
