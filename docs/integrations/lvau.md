@@ -44,8 +44,8 @@ deno run \
   examples/lvau-service/mod.ts
 ```
 
-`LVAU_TIMEOUT_MS` is optional. The example accepts values from 1,000 through 600,000 milliseconds and
-uses 30,000 milliseconds when the variable is unset.
+`LVAU_TIMEOUT_MS` is optional. The example accepts values from 1,000 through 600,000 milliseconds
+and uses 30,000 milliseconds when the variable is unset.
 
 Send a file as the request body:
 
