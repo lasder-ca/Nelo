@@ -13,7 +13,9 @@ export class InvalidDeadlineError extends TypeError {
 
   constructor(value: unknown) {
     super(
-      `NELO_SCOPE_007: invalid deadline duration ${formatDiagnosticValue(value)}; use a non-negative number of milliseconds or a value such as "750ms", "2s", "1m", or "1h"`,
+      `NELO_SCOPE_007: invalid deadline duration ${
+        formatDiagnosticValue(value)
+      }; use a non-negative number of milliseconds or a value such as "750ms", "2s", "1m", or "1h"`,
     );
   }
 }
