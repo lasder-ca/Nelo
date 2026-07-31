@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Braces, CircleDot, Github, Layers3, Radio, Sparkles } from "lucide-react";
 import { CodeBlock } from "@/components/code-block";
+import { NeloLiveLab } from "@/components/nelo-live-lab";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { brandAssets } from "@/lib/brand";
@@ -196,6 +197,8 @@ export default async function HomePage() {
           })}
         </div>
       </section>
+
+      <NeloLiveLab />
 
       <section className="page-links page-shell" aria-label="Explore Nelo">
         <Link href="/docs" className="page-link-card large">
