@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="./assets/nelo-icon.svg" alt="Nelo" width="128" height="128">
+</p>
+
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/nelo-wordmark-on-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="./assets/nelo-wordmark-on-light.svg">
@@ -21,7 +25,7 @@
   <a href="./README.md">English</a> · 日本語 · <a href="https://nelo.lattee.jp">Webサイト</a>
 </p>
 
-Neloは、各リクエストを、そのリクエストから始まった処理の所有者として扱うWeb Standardsベースのフレームワークです。ハンドラーが`Response`を返したあとも、タスク、リソース、レスポンス本文の配信が残る場合があります。Neloはそれぞれの寿命を明示します。
+Neloは、各リクエストを、そのリクエストから始まった処理の所有者として扱うWeb Standardsベースのフレームワークです。ハンドラーが`Response`を返したあとも残るタスク、リソース、レスポンス本文の寿命を明示します。
 
 > `Response`を返した時点で、リクエストに関係する処理がすべて終わるとは限りません。
 
@@ -37,7 +41,6 @@ app.get("/users/:id", async (context) => {
   const user = context.fork("load-user", (signal) =>
     fetchUser(context.params.id!, { signal })
   );
-
   return context.json(await user);
 });
 
@@ -45,14 +48,12 @@ const server = serve(app, { port: 3000 });
 await server.listen();
 ```
 
-タスクは開始時点からNeloの管理下に置く必要があります。すでに動き始めた任意のPromiseへ、あとから確実な中断処理を付けるものではありません。
-
 ## ライフタイム
 
 ```text
 リクエストのライフタイム
 ├── ハンドラースコープ
-│   ├── ミドルウェア
+│   ├── middleware
 │   ├── context.fork()
 │   └── context.use()
 └── デリバリースコープ
@@ -74,45 +75,25 @@ await server.listen();
 | `context.delivery.fork(name, operation)` | レスポンス配信が所有する処理を開始します。 |
 | `context.delivery.use(...)` | リソースや後片付けを配信終了まで保持します。 |
 
-現在は、静的ルートとパラメータールート、全体・ルート単位のミドルウェア、`404`/`405`、共通エラー処理、上限付き診断、Node.jsアダプター、切断検知、ストリーミングのバックプレッシャー、安全なサーバー終了も含みます。
-
 ## Lvau連携
 
-[`examples/lvau-service`](./examples/lvau-service/mod.ts)は、Lvauのファイル暗号化CLIをリクエストが所有する処理として実行します。クライアント切断時には子プロセスを終了し、一時平文をハンドラースコープとともに削除します。アップロードサイズを制限し、パスワードは権限を制限したローカルファイルから読み取ります。
+[`examples/lvau-service`](./examples/lvau-service/mod.ts)は、Lvauの暗号化CLIをリクエスト所有の処理として実行します。クライアント切断時に子プロセスを終了し、一時平文を削除します。
 
 設定方法と安全上の境界は[連携ガイド](./docs/integrations/lvau.md)を確認してください。
 
-## 対応状況
+## ブランド素材
 
-| 機能 | 共通部分 | Node.js | その他のランタイム |
-|---|:---:|:---:|:---:|
-| リクエスト所有のタスクとリソース | 対応 | 対応 | 共通APIは移植可能 |
-| レスポンス本文の寿命追跡 | 対応 | 対応 | アダプター未実装 |
-| クライアント切断との連携 | — | 対応 | アダプター未実装 |
-| 安全なサーバー終了 | — | 対応 | アダプター未実装 |
-| 永続的な遅延処理 | 非対応 | 非対応 | 保証しません |
+- [`assets/nelo-icon.svg`](./assets/nelo-icon.svg) — README、サイト、製品画面向けの基本アイコン。
+- [`assets/favicon.svg`](./assets/favicon.svg) — faviconや小さい表示向け。
 
-各ランタイムは、アダプターと実通信テストが揃った範囲だけを対応済みとします。
-
-## 現在の制限
-
-Neloは、次を保証しません。
-
-- 任意のPromiseの強制終了。
-- クライアントが全バイトを物理的に受信したことの証明。
-- 永続的または厳密に一度だけ実行されるバックグラウンド処理。
-- すべてのランタイムで同一の通信動作。
-- Cloudflare、Deno、Bun向けアダプターの完成。
+どちらも透明背景のフラットなSVGで、そのままWebサイトから参照できます。
 
 ## 開発
-
-現在のパッケージ名は`@lasder/nelo`です。Node.js 20、22、24とDeno 2でソースを検証します。
 
 ```sh
 git clone https://github.com/lasder-ca/Nelo.git
 cd Nelo
 npm install
-
 npm run format
 npm run lint
 npm run typecheck
@@ -121,12 +102,6 @@ npm run build
 npm run check:package
 npm run check:tarball
 ```
-
-関連文書:
-
-- [Node.jsアダプター](./docs/adapters/node.md)
-- [リクエスト所有のADR](./docs/adr/0002-nelo-request-ownership.md)
-- [Lvau連携](./docs/integrations/lvau.md)
 
 ## ライセンス
 
