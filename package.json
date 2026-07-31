@@ -59,7 +59,7 @@
     "test:node": "npm run build:test-node && node --test --test-concurrency=1 .tmp/node-tests/test/node/*.test.js",
     "build:test-node": "tsc -p tsconfig.node-test.json",
     "build": "tsc -p tsconfig.build.json && deno run --allow-read=dist --allow-write=dist scripts/rewrite-declarations.ts",
-    "build:site": "node patch-site.mjs",
+    "build:site": "node patch-site.mjs && node scripts/patch-delivery-site.mjs",
     "check:site": "npm run build:site && node scripts/site-smoke.mjs",
     "check:package": "tsc --ignoreConfig --noEmit --strict --noUncheckedIndexedAccess --target ES2022 --module NodeNext --moduleResolution NodeNext --lib ES2022,DOM,ESNext.Disposable --types node scripts/package-smoke.ts",
     "check:tarball": "node scripts/tarball-smoke.mjs",

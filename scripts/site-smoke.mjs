@@ -9,11 +9,15 @@ const [html, css, javascript] = await Promise.all([
 assertIncludes(html, 'id="lab"', "homepage live lab section");
 assertIncludes(html, "/api/nelo?scenario=tasks", "documented API endpoint");
 assertIncludes(html, 'data-lab-scenario="deadline"', "deadline scenario control");
+assertIncludes(html, 'data-lab-scenario="delivery"', "delivery scenario control");
 assertIncludes(html, "Run the framework, not a mock.", "live implementation boundary copy");
 assertIncludes(css, ".lab-grid", "live lab responsive layout");
 assertIncludes(css, ":focus-visible", "keyboard focus styling");
 assertIncludes(javascript, "fetch(buildLabUrl()", "same-origin API execution");
 assertIncludes(javascript, "activeController.abort()", "browser cancellation control");
+assertIncludes(javascript, "application/x-ndjson", "streaming delivery response handling");
+assertIncludes(javascript, "x-nelo-delivery", "delivery transport metadata");
+assertIncludes(javascript, "scenario==='delivery'", "delivery timing controls");
 assertExcludes(html, 'href="/docs', "broken generated documentation route");
 
 const logo = await stat("dist/brand/nelo-mark.svg");

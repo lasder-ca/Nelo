@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
+import { once } from "node:events";
+import { createServer, request as createHttpRequest } from "node:http";
+import type { AddressInfo } from "node:net";
 import test from "node:test";
-import { handleNeloLabRequest } from "../../api/nelo.ts";
+import {
+  createDeliveryLabApplication,
+  handleNeloLabRequest,
+  type LabEvent,
+} from "../../api/nelo.ts";
+import { handleNodeExchange } from "../../src/node/handler.ts";
 
 interface LabPayload {
   readonly scenario?: string;
@@ -71,16 +79,44 @@ test("handler resources are cleaned before the API response is returned", async 
   ]);
 });
 
-test("delivery cleanup runs when the adapter consumes the Nelo body", async () => {
-  const response = await runLab("delivery");
-  const payload = await readPayload(response);
+test("delivery cleanup follows actual Node response completion", async () => {
+  const events: LabEvent[] = [];
+  await withDeliveryServer(events, async (origin) => {
+    const response = await fetch(
+      `${origin}/api/nelo?scenario=delivery&delay=10&chunks=2`,
+    );
+    const lines = (await response.text()).trim().split("\n").map((line) => JSON.parse(line));
 
-  assert.equal(response.status, 200);
-  assert.deepEqual(labels(payload), [
-    "request:accepted",
-    "handler:return",
-    "delivery:cleanup",
-  ]);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-nelo-delivery"), "transport-owned");
+    assert.deepEqual(lines.map((line) => line.event), [
+      "handler:return",
+      "delivery:chunk",
+      "delivery:chunk",
+      "delivery:body-complete",
+    ]);
+    await waitForEvent(events, "delivery:cleanup");
+
+    assert.ok(
+      eventIndex(events, "delivery:cleanup") > eventIndex(events, "delivery:body-complete"),
+    );
+  });
+});
+
+test("client disconnect cancels the owned delivery stream before cleanup", async () => {
+  const events: LabEvent[] = [];
+  await withDeliveryServer(events, async (origin) => {
+    await disconnectAfterFirstChunk(
+      `${origin}/api/nelo?scenario=delivery&delay=100&chunks=8`,
+    );
+    const cleanup = await waitForEvent(events, "delivery:cleanup");
+
+    assert.ok(eventIndex(events, "delivery:stream-cancel") >= 0);
+    assert.ok(
+      eventIndex(events, "delivery:cleanup") > eventIndex(events, "delivery:stream-cancel"),
+    );
+    assert.deepEqual(cleanup.detail, { reason: { type: "client_disconnect" } });
+  });
 });
 
 test("invalid lab input receives a bounded JSON error", async () => {
@@ -102,4 +138,61 @@ async function readPayload(response: Response): Promise<LabPayload> {
 
 function labels(payload: LabPayload): string[] {
   return payload.lifecycle.map((event) => event.label);
+}
+
+async function withDeliveryServer(
+  events: LabEvent[],
+  operation: (origin: string) => Promise<void>,
+): Promise<void> {
+  const app = createDeliveryLabApplication((event) => events.push(event));
+  const server = createServer((request, response) => {
+    void handleNodeExchange(
+      app,
+      request,
+      response,
+      new AbortController(),
+      { protocol: "http" },
+    );
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address() as AddressInfo;
+
+  try {
+    await operation(`http://127.0.0.1:${address.port}`);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+}
+
+function disconnectAfterFirstChunk(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = createHttpRequest(url, (response) => {
+      response.once("data", () => {
+        response.destroy();
+        request.destroy();
+        resolve();
+      });
+    });
+    request.once("error", (error) => {
+      if ((error as NodeJS.ErrnoException).code === "ECONNRESET") resolve();
+      else reject(error);
+    });
+    request.end();
+  });
+}
+
+async function waitForEvent(events: LabEvent[], label: string): Promise<LabEvent> {
+  const deadline = Date.now() + 2_000;
+  while (Date.now() < deadline) {
+    const event = events.find((candidate) => candidate.label === label);
+    if (event !== undefined) return event;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`Timed out waiting for ${label}: ${JSON.stringify(events)}`);
+}
+
+function eventIndex(events: LabEvent[], label: string): number {
+  return events.findIndex((event) => event.label === label);
 }

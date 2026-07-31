@@ -1,20 +1,23 @@
 import { Buffer } from "node:buffer";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Nelo } from "../mod.ts";
-import { diagnosticCode } from "../src/lifetime/errors.ts";
 import type { NeloAbortReason } from "../src/lifetime/cancellation.ts";
+import { diagnosticCode } from "../src/lifetime/errors.ts";
 import type { RequestDiagnostics } from "../src/lifetime/request-lifetime.ts";
+import { handleNodeExchange } from "../src/node/handler.ts";
 
 const NELO_VERSION = "0.2.0-alpha.1";
 const API_PATH = "/api/nelo";
 
 type LabScenario = "health" | "tasks" | "deadline" | "resource" | "delivery";
 
-interface LabEvent {
+export interface LabEvent {
   readonly label: string;
   readonly atMs: number;
   readonly detail?: unknown;
 }
+
+export type LabEventListener = (event: LabEvent) => void;
 
 class LabInputError extends Error {
   constructor(message: string) {
@@ -28,14 +31,156 @@ export async function handleNeloLabRequest(request: Request): Promise<Response> 
   const events: LabEvent[] = [];
   const diagnostics: RequestDiagnostics[] = [];
 
-  const mark = (label: string, detail?: unknown): void => {
-    events.push({
-      label,
-      atMs: Math.round((performance.now() - startedAt) * 100) / 100,
-      ...(detail === undefined ? {} : { detail }),
-    });
-  };
+  const mark = createEventMarker(startedAt, (event) => events.push(event));
+  const app = createJsonLabApplication(mark, diagnostics);
+  const neloResponse = await app.fetch(request);
+  const originalBody = await neloResponse.text();
+  const payload = parseResponseBody(originalBody, neloResponse.headers.get("content-type"));
+  const finalDiagnostics = diagnostics.at(-1);
 
+  return Response.json(
+    {
+      ...payload,
+      lifecycle: events,
+      diagnostics: finalDiagnostics === undefined ? null : summariseDiagnostics(finalDiagnostics),
+    },
+    {
+      status: neloResponse.status,
+      headers: {
+        "cache-control": "no-store",
+        "server-timing": `nelo;dur=${elapsed(startedAt)}`,
+        "x-content-type-options": "nosniff",
+        "x-nelo-lab": "1",
+      },
+    },
+  );
+}
+
+export function createDeliveryLabApplication(listener: LabEventListener = () => undefined): Nelo {
+  const startedAt = performance.now();
+  const mark = createEventMarker(startedAt, listener);
+  const encoder = new TextEncoder();
+  const app = new Nelo({
+    mode: "test",
+    diagnostics(snapshot) {
+      mark("diagnostics", {
+        state: snapshot.state,
+        pendingDeliveryTasks: snapshot.pendingDeliveryTasks,
+        abortReason: serialiseReason(snapshot.abortReason),
+      });
+    },
+    onError(error, context) {
+      if (error instanceof LabInputError) {
+        return context.json({ error: error.message }, 400);
+      }
+      return context.json(
+        { error: "The Nelo delivery lab failed", code: diagnosticCode(error) },
+        500,
+      );
+    },
+  });
+
+  app.get(API_PATH, (context) => {
+    const url = new URL(context.req.url);
+    const scenario = parseScenario(url.searchParams.get("scenario"));
+    if (scenario !== "delivery") {
+      throw new LabInputError("The transport endpoint only accepts scenario=delivery");
+    }
+
+    const delay = readInteger(url, "delay", 250, 10, 1_000);
+    const chunkCount = readInteger(url, "chunks", 6, 2, 12);
+    let nextChunk = 1;
+
+    mark("request:accepted", { scenario, delayMs: delay, chunks: chunkCount });
+    context.delivery.use(() => {
+      mark("delivery:cleanup", {
+        reason: serialiseReason(context.delivery.reason),
+      });
+    });
+    mark("handler:return", { transport: "node-server-response" });
+
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          encodeLine(encoder, {
+            event: "handler:return",
+            transport: "node-server-response",
+          }),
+        );
+      },
+      async pull(controller) {
+        if (nextChunk > chunkCount) {
+          mark("delivery:body-complete", { chunks: chunkCount });
+          controller.enqueue(
+            encodeLine(encoder, {
+              event: "delivery:body-complete",
+              chunks: chunkCount,
+            }),
+          );
+          controller.close();
+          return;
+        }
+
+        await wait(
+          delay,
+          context.delivery.signal,
+          () =>
+            mark("delivery:abort", {
+              reason: serialiseReason(context.delivery.reason),
+            }),
+        );
+        const chunk = nextChunk++;
+        mark("delivery:chunk", { chunk });
+        controller.enqueue(encodeLine(encoder, { event: "delivery:chunk", chunk }));
+      },
+      cancel(reason) {
+        mark("delivery:stream-cancel", { reason: serialiseReason(reason) });
+      },
+    });
+
+    return new Response(body, {
+      headers: {
+        "cache-control": "no-store",
+        "content-type": "application/x-ndjson; charset=utf-8",
+        "x-content-type-options": "nosniff",
+        "x-nelo-delivery": "transport-owned",
+        "x-nelo-lab": "1",
+      },
+    });
+  });
+
+  return app;
+}
+
+export default async function neloLabHandler(
+  incoming: IncomingMessage,
+  outgoing: ServerResponse,
+): Promise<void> {
+  if (requestedScenario(incoming) === "delivery") {
+    await handleNodeExchange(
+      createDeliveryLabApplication((event) => {
+        console.info(JSON.stringify({ source: "nelo-live-lab", ...event }));
+      }),
+      incoming,
+      outgoing,
+      new AbortController(),
+      { protocol: requestProtocol(incoming) },
+      {
+        onError(error) {
+          console.error("Nelo delivery lab failed", error);
+        },
+      },
+    );
+    return;
+  }
+
+  await writeBufferedLabResponse(incoming, outgoing);
+}
+
+function createJsonLabApplication(
+  mark: (label: string, detail?: unknown) => void,
+  diagnostics: RequestDiagnostics[],
+): Nelo {
   const app = new Nelo({
     mode: "test",
     diagnostics(snapshot) {
@@ -146,38 +291,16 @@ export async function handleNeloLabRequest(request: Request): Promise<Response> 
       }
 
       case "delivery":
-        context.delivery.use(() => {
-          mark("delivery:cleanup", { resource: "response-producer" });
-        });
-        mark("handler:return", { body: "ready" });
-        return context.json({ scenario, result: "body delivered" });
+        throw new LabInputError(
+          "The delivery scenario must be called through the live Node transport",
+        );
     }
   });
 
-  const neloResponse = await app.fetch(request);
-  const originalBody = await neloResponse.text();
-  const payload = parseResponseBody(originalBody, neloResponse.headers.get("content-type"));
-  const finalDiagnostics = diagnostics.at(-1);
-
-  return Response.json(
-    {
-      ...payload,
-      lifecycle: events,
-      diagnostics: finalDiagnostics === undefined ? null : summariseDiagnostics(finalDiagnostics),
-    },
-    {
-      status: neloResponse.status,
-      headers: {
-        "cache-control": "no-store",
-        "server-timing": `nelo;dur=${Math.round((performance.now() - startedAt) * 100) / 100}`,
-        "x-content-type-options": "nosniff",
-        "x-nelo-lab": "1",
-      },
-    },
-  );
+  return app;
 }
 
-export default async function neloLabHandler(
+async function writeBufferedLabResponse(
   incoming: IncomingMessage,
   outgoing: ServerResponse,
 ): Promise<void> {
@@ -239,6 +362,14 @@ function parseScenario(value: string | null): LabScenario {
   throw new LabInputError(`Unknown scenario: ${scenario}`);
 }
 
+function requestedScenario(request: IncomingMessage): string | null {
+  try {
+    return new URL(request.url ?? API_PATH, "https://nelo.invalid").searchParams.get("scenario");
+  } catch {
+    return null;
+  }
+}
+
 function readInteger(
   url: URL,
   name: string,
@@ -286,12 +417,34 @@ function wait(
   });
 }
 
+function createEventMarker(
+  startedAt: number,
+  listener: LabEventListener,
+): (label: string, detail?: unknown) => void {
+  return (label, detail) => {
+    listener({
+      label,
+      atMs: elapsed(startedAt),
+      ...(detail === undefined ? {} : { detail }),
+    });
+  };
+}
+
+function elapsed(startedAt: number): number {
+  return Math.round((performance.now() - startedAt) * 100) / 100;
+}
+
+function encodeLine(encoder: TextEncoder, value: unknown): Uint8Array {
+  return encoder.encode(`${JSON.stringify(value)}\n`);
+}
+
 function isDeadlineReason(value: unknown): value is Extract<NeloAbortReason, { type: "deadline" }> {
   return typeof value === "object" && value !== null && "type" in value &&
     value.type === "deadline" && "deadline" in value && typeof value.deadline === "number";
 }
 
 function serialiseReason(value: unknown): unknown {
+  if (value === undefined) return undefined;
   if (typeof value !== "object" || value === null || !("type" in value)) {
     return value instanceof Error ? { name: value.name, message: value.message } : value;
   }
@@ -336,10 +489,14 @@ function summariseDiagnostics(diagnostics: RequestDiagnostics): Record<string, u
 }
 
 function createRequestUrl(request: IncomingMessage): string {
-  const protocol = firstHeader(request.headers["x-forwarded-proto"]) ?? "https";
+  const protocol = requestProtocol(request);
   const host = firstHeader(request.headers["x-forwarded-host"]) ?? request.headers.host ??
     "nelo.lattee.jp";
   return `${protocol}://${host}${request.url ?? API_PATH}`;
+}
+
+function requestProtocol(request: IncomingMessage): "http" | "https" {
+  return firstHeader(request.headers["x-forwarded-proto"]) === "http" ? "http" : "https";
 }
 
 function createRequestHeaders(request: IncomingMessage): Headers {
