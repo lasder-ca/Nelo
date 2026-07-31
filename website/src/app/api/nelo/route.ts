@@ -22,13 +22,27 @@ class InputError extends Error {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const scenario = parseScenario(new URL(request.url).searchParams.get("scenario"));
+  try {
+    const scenario = parseScenario(new URL(request.url).searchParams.get("scenario"));
 
-  if (scenario === "delivery") {
-    return runDeliveryScenario(request);
+    if (scenario === "delivery") {
+      return runDeliveryScenario(request);
+    }
+
+    return runJsonScenario(request);
+  } catch (error) {
+    if (error instanceof InputError) {
+      return Response.json(
+        { error: error.message },
+        {
+          status: 400,
+          headers: labHeaders(),
+        },
+      );
+    }
+
+    throw error;
   }
-
-  return runJsonScenario(request);
 }
 
 async function runJsonScenario(request: Request): Promise<Response> {
@@ -136,10 +150,8 @@ async function runJsonScenario(request: Request): Promise<Response> {
     {
       status: response.status,
       headers: {
-        "cache-control": "no-store",
+        ...labHeaders(),
         "server-timing": `nelo;dur=${elapsed(startedAt)}`,
-        "x-content-type-options": "nosniff",
-        "x-nelo-lab": "1",
       },
     },
   );
@@ -195,11 +207,9 @@ async function runDeliveryScenario(request: Request): Promise<Response> {
 
     return new Response(body, {
       headers: {
-        "cache-control": "no-store",
+        ...labHeaders(),
         "content-type": "application/x-ndjson; charset=utf-8",
-        "x-content-type-options": "nosniff",
         "x-nelo-delivery": "transport-owned",
-        "x-nelo-lab": "1",
       },
     });
   });
@@ -275,6 +285,14 @@ function parseJsonObject(body: string): Record<string, unknown> {
 
 function encodeLine(encoder: TextEncoder, value: unknown): Uint8Array {
   return encoder.encode(`${JSON.stringify(value)}\n`);
+}
+
+function labHeaders(): Record<string, string> {
+  return {
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    "x-nelo-lab": "1",
+  };
 }
 
 function elapsed(startedAt: number): number {
