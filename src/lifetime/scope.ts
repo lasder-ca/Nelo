@@ -4,6 +4,10 @@ import {
   isCancellationAcknowledgement,
   LifetimeCancelledError,
 } from "./cancellation.ts";
+import {
+  type DeadlineDuration,
+  RequestDeadline,
+} from "./deadline.ts";
 import { ScopeClosedError, UnjoinedTaskError } from "./errors.ts";
 import { type Cleanup, ResourceStack } from "./resource-stack.ts";
 import { OwnedTask, type OwnedTaskSnapshot, type TaskOwner } from "./task.ts";
@@ -102,6 +106,14 @@ export class LifetimeScope implements TaskOwner {
     this.#tasks.push(task as OwnedTask<unknown>);
     if (this.signal.aborted) task.cancelFromParent(this.cancellationReason!);
     return task;
+  }
+
+  deadline(duration: DeadlineDuration): RequestDeadline {
+    this.#assertOpen("create a deadline");
+    return this.#resources.add(
+      `deadline:${duration}`,
+      new RequestDeadline(this.signal, duration),
+    );
   }
 
   createChild(name: string): LifetimeScope {
