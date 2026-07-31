@@ -1,7 +1,4 @@
-import {
-  type CancellationReason,
-  cancellationReasonFromSignal,
-} from "./cancellation.ts";
+import { type CancellationReason, cancellationReasonFromSignal } from "./cancellation.ts";
 import { InvalidDeadlineError } from "./errors.ts";
 
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
