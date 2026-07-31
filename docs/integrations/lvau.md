@@ -8,10 +8,12 @@ lifetime.
 ## What the example guarantees
 
 - the upload is limited to 8 MiB before encryption starts;
+- an interrupted body read is cancelled when the request signal aborts;
 - plaintext and encrypted output are written to a private temporary directory;
 - the temporary directory is removed when the handler scope closes;
 - `lvau-cli` receives the request `AbortSignal` through `context.fork()` and is terminated when the
   request is cancelled;
+- `lvau-cli` is terminated after a bounded execution time, which defaults to 30 seconds;
 - the password is read by Lvau from a protected local file, not from the URL, request body,
   environment value, or command-line password argument;
 - the `balanced` profile is selected explicitly;
@@ -31,6 +33,8 @@ chmod 600 password.txt
 
 export LVAU_PASSWORD_FILE="$PWD/password.txt"
 export LVAU_CLI="/path/to/lvau/target/release/lvau-cli"
+export LVAU_TIMEOUT_MS=30000
+
 deno run \
   --allow-env \
   --allow-read \
@@ -39,6 +43,9 @@ deno run \
   --allow-net=127.0.0.1:3000 \
   examples/lvau-service/mod.ts
 ```
+
+`LVAU_TIMEOUT_MS` is optional. The example accepts values from 1,000 through 600,000 milliseconds and
+uses 30,000 milliseconds when the variable is unset.
 
 Send a file as the request body:
 
