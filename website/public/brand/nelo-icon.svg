@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Nelo</title>
+  <desc id="desc">A rounded N formed by two connected paths.</desc>
+  <path fill="#173b73" d="M35 194V73c0-18 14-32 32-32 13 0 24 7 31 18l38 63-28 31-28-47v62c0 17-14 31-31 31H40c-3 0-5-2-5-5Z"/>
+  <path fill="#55c9c3" d="M221 62v121c0 18-14 32-32 32-13 0-24-7-31-18l-38-63 28-31 28 47V88c0-17 14-31 31-31h9c3 0 5 2 5 5Z"/>
+  <circle cx="128" cy="128" r="18" fill="#f5f1e8" stroke="#173b73" stroke-width="8"/>
+</svg>
