@@ -55,6 +55,7 @@ Request lifetime
 ├── Handler scope
 │   ├── middleware
 │   ├── context.fork()
+│   ├── context.deadline()
 │   └── context.use()
 └── Delivery scope
     ├── Response.body
@@ -73,9 +74,14 @@ once in reverse acquisition order.
 | `app.fetch(request)`                     | Run routing, middleware, the handler, and owned delivery. |
 | `context.fork(name, operation)`          | Start an eager task owned by the request.                 |
 | `context.signal`                         | Forward cooperative cancellation to request work.         |
+| `context.deadline(duration)`             | Create a disposable signal with a shorter request budget. |
 | `context.use(name, acquire, cleanup?)`   | Acquire and release a handler-owned resource.             |
 | `context.delivery.fork(name, operation)` | Start work owned by response delivery.                    |
 | `context.delivery.use(...)`              | Keep a resource or cleanup attached to delivery.          |
+
+Deadlines accept milliseconds or values such as `750ms`, `2s`, `1m`, and `1h`. They preserve parent
+cancellation, abort with a typed `deadline` reason on expiry, and are disposed automatically when the
+handler scope closes.
 
 ## Lvau integration
 
