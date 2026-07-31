@@ -55,6 +55,7 @@ await server.listen();
 ├── ハンドラースコープ
 │   ├── middleware
 │   ├── context.fork()
+│   ├── context.deadline()
 │   └── context.use()
 └── デリバリースコープ
     ├── Response.body
@@ -71,9 +72,12 @@ await server.listen();
 | `app.fetch(request)` | ルーティング、ミドルウェア、ハンドラー、配信を実行します。 |
 | `context.fork(name, operation)` | リクエストが所有するタスクを開始します。 |
 | `context.signal` | リクエストの中断通知を処理へ渡します。 |
+| `context.deadline(duration)` | リクエストより短い処理期限を持つSignalを作ります。 |
 | `context.use(name, acquire, cleanup?)` | ハンドラーが所有するリソースを取得・解放します。 |
 | `context.delivery.fork(name, operation)` | レスポンス配信が所有する処理を開始します。 |
 | `context.delivery.use(...)` | リソースや後片付けを配信終了まで保持します。 |
+
+期限にはミリ秒の数値、または`750ms`、`2s`、`1m`、`1h`のような値を指定できます。親リクエストの中断理由を引き継ぎ、期限切れ時は型付きの`deadline`理由で中断し、ハンドラースコープ終了時に自動解放されます。
 
 ## Lvau連携
 

@@ -1,3 +1,4 @@
+import type { DeadlineDuration, RequestDeadline } from "../lifetime/deadline.ts";
 import type { OwnedTask } from "../lifetime/task.ts";
 import type { DeliveryContext, RequestDiagnosticsListener } from "../lifetime/request-lifetime.ts";
 
@@ -13,6 +14,7 @@ export interface NeloContext {
     name: string,
     operation: (signal: AbortSignal) => T | PromiseLike<T>,
   ): OwnedTask<T>;
+  deadline(duration: DeadlineDuration): RequestDeadline;
   use<T>(
     name: string,
     acquire: (signal: AbortSignal) => T | PromiseLike<T>,
