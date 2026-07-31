@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Nelo</title>
+  <path fill="#173f7a" d="M82 395V164c0-39 31-70 70-70h13c30 0 58 16 73 42l50 85-55 32-46-78c-6-10-16-16-28-16h-12v236c0 31-25 56-56 56H82Z"/>
+  <path fill="#49b9bb" d="M430 117v231c0 39-31 70-70 70h-13c-30 0-58-16-73-42l-50-85 55-32 46 78c6 10 16 16 28 16h12V117c0-31 25-56 56-56h9Z"/>
+  <circle cx="256" cy="256" r="35" fill="#f4efe5" stroke="#173f7a" stroke-width="14"/>
+</svg>
