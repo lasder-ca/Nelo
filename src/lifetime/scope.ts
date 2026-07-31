@@ -4,10 +4,7 @@ import {
   isCancellationAcknowledgement,
   LifetimeCancelledError,
 } from "./cancellation.ts";
-import {
-  type DeadlineDuration,
-  RequestDeadline,
-} from "./deadline.ts";
+import { type DeadlineDuration, RequestDeadline } from "./deadline.ts";
 import { ScopeClosedError, UnjoinedTaskError } from "./errors.ts";
 import { type Cleanup, ResourceStack } from "./resource-stack.ts";
 import { OwnedTask, type OwnedTaskSnapshot, type TaskOwner } from "./task.ts";
