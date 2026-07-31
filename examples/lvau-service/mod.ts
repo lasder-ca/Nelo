@@ -114,7 +114,10 @@ async function readRequestBody(
 
   try {
     while (true) {
-      if (signal.aborted) throw signal.reason;
+      if (signal.aborted) {
+        throw signal.reason ?? new Error("Request was cancelled");
+      }
+
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -171,7 +174,6 @@ function runLvau(args: readonly string[], signal: AbortSignal): Promise<void> {
       if (child.exitCode !== null || child.signalCode !== null) return;
       child.kill();
       forceKillTimer = setTimeout(() => child.kill("SIGKILL"), 1_000);
-      forceKillTimer.unref?.();
     };
 
     if (signal.aborted) abort();
