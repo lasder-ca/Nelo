@@ -80,8 +80,8 @@ once in reverse acquisition order.
 | `context.delivery.use(...)`              | Keep a resource or cleanup attached to delivery.          |
 
 Deadlines accept milliseconds or values such as `750ms`, `2s`, `1m`, and `1h`. They preserve parent
-cancellation, abort with a typed `deadline` reason on expiry, and are disposed automatically when the
-handler scope closes.
+cancellation, abort with a typed `deadline` reason on expiry, and are disposed automatically when
+the handler scope closes.
 
 ## Lvau integration
 
