@@ -7,6 +7,17 @@ export class ScopeClosedError extends Error {
   }
 }
 
+export class InvalidDeadlineError extends TypeError {
+  override readonly name = "InvalidDeadlineError";
+  readonly code = "NELO_SCOPE_007";
+
+  constructor(value: unknown) {
+    super(
+      `NELO_SCOPE_007: invalid deadline duration ${JSON.stringify(value)}; use a non-negative number of milliseconds or a value such as "750ms", "2s", "1m", or "1h"`,
+    );
+  }
+}
+
 export class UnjoinedTaskError extends Error {
   override readonly name = "UnjoinedTaskError";
   readonly code = "NELO_TASK_001";
