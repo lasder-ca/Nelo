@@ -109,8 +109,14 @@ export class RequestDeadline implements Disposable {
   }
 }
 
-export function parseDeadlineDuration(value: DeadlineDuration): number {
-  const milliseconds = typeof value === "number" ? value : parseDurationString(value);
+export function parseDeadlineDuration(value: DeadlineDuration): number;
+export function parseDeadlineDuration(value: unknown): number {
+  const milliseconds = typeof value === "number"
+    ? value
+    : typeof value === "string"
+    ? parseDurationString(value)
+    : invalidDeadline(value);
+
   if (!Number.isFinite(milliseconds) || milliseconds < 0) {
     throw new InvalidDeadlineError(value);
   }
@@ -127,4 +133,8 @@ function parseDurationString(value: string): number {
   const amount = Number(match[1]);
   const unit = match[2] as DeadlineUnit;
   return amount * UNIT_MULTIPLIER[unit];
+}
+
+function invalidDeadline(value: unknown): never {
+  throw new InvalidDeadlineError(value);
 }
