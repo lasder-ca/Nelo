@@ -183,7 +183,6 @@ function runLvau(
     let settled = false;
     let terminationError: unknown;
     let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
-    let executionTimer: ReturnType<typeof setTimeout> | undefined;
 
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", (chunk: string) => {
@@ -193,7 +192,7 @@ function runLvau(
     const cleanup = (): void => {
       signal.removeEventListener("abort", abort);
       if (forceKillTimer !== undefined) clearTimeout(forceKillTimer);
-      if (executionTimer !== undefined) clearTimeout(executionTimer);
+      clearTimeout(executionTimer);
     };
 
     const finish = (error?: unknown): void => {
@@ -241,7 +240,7 @@ function runLvau(
     if (signal.aborted) abort();
     else signal.addEventListener("abort", abort, { once: true });
 
-    executionTimer = setTimeout(
+    const executionTimer = setTimeout(
       () =>
         terminate(
           new LvauProcessError(
