@@ -1,3 +1,3 @@
 export const brandAssets = {
-  icon: "/brand/nelo-icon.png",
+  icon: "/brand/nelo-icon.svg",
 } as const;
