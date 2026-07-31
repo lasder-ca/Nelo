@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="./assets/nelo-icon.svg" alt="Nelo" width="128" height="128">
+</p>
+
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/nelo-wordmark-on-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="./assets/nelo-wordmark-on-light.svg">
@@ -21,9 +25,7 @@
   English · <a href="./README.ja.md">日本語</a> · <a href="https://nelo.lattee.jp">Website</a>
 </p>
 
-Nelo is a Web Standards framework that treats each request as the owner of the work it starts. A
-handler may return a `Response` while tasks are still running, resources are still open, or a
-response body is still being delivered. Nelo keeps those lifetimes explicit.
+Nelo is a Web Standards framework that treats each request as the owner of the work it starts. A handler may return a `Response` while tasks are still running, resources are still open, or a response body is still being delivered. Nelo keeps those lifetimes explicit.
 
 > Returning a `Response` is not the same as completing the request lifetime.
 
@@ -37,16 +39,12 @@ const app = new Nelo();
 
 app.get("/users/:id", async (context) => {
   const user = context.fork("load-user", (signal) => fetchUser(context.params.id!, { signal }));
-
   return context.json(await user);
 });
 
 const server = serve(app, { port: 3000 });
 await server.listen();
 ```
-
-Nelo must own a task when it starts. It cannot attach reliable cancellation to an arbitrary promise
-that is already running.
 
 ## Lifetime model
 
@@ -62,65 +60,38 @@ Request lifetime
     └── context.delivery.use()
 ```
 
-The handler scope closes after the handler finishes. The delivery scope remains active until the
-body completes, fails, is cancelled, or the transport reports a disconnect. Resources are released
-once in reverse acquisition order.
+The handler scope closes after the handler finishes. The delivery scope remains active until the body completes, fails, is cancelled, or the transport reports a disconnect. Resources are released once in reverse acquisition order.
 
 ## Core API
 
-| API                                      | Purpose                                                   |
-| ---------------------------------------- | --------------------------------------------------------- |
-| `app.fetch(request)`                     | Run routing, middleware, the handler, and owned delivery. |
-| `context.fork(name, operation)`          | Start an eager task owned by the request.                 |
-| `context.signal`                         | Forward cooperative cancellation to request work.         |
-| `context.use(name, acquire, cleanup?)`   | Acquire and release a handler-owned resource.             |
-| `context.delivery.fork(name, operation)` | Start work owned by response delivery.                    |
-| `context.delivery.use(...)`              | Keep a resource or cleanup attached to delivery.          |
-
-The current framework also includes static and parameter routes, global and route middleware,
-`404`/`405` handling, centralized errors, bounded diagnostics, a Node.js adapter, disconnect
-handling, streaming backpressure, and graceful shutdown.
+| API | Purpose |
+|---|---|
+| `app.fetch(request)` | Run routing, middleware, the handler, and owned delivery. |
+| `context.fork(name, operation)` | Start an eager task owned by the request. |
+| `context.signal` | Forward cooperative cancellation to request work. |
+| `context.use(name, acquire, cleanup?)` | Acquire and release a handler-owned resource. |
+| `context.delivery.fork(name, operation)` | Start work owned by response delivery. |
+| `context.delivery.use(...)` | Keep a resource or cleanup attached to delivery. |
 
 ## Lvau integration
 
-[`examples/lvau-service`](./examples/lvau-service/mod.ts) runs the Lvau file-encryption CLI as
-request-owned work. Client cancellation terminates the child process, temporary plaintext is removed
-with the handler scope, uploads are bounded, and the password is read from a protected local file.
+[`examples/lvau-service`](./examples/lvau-service/mod.ts) runs the Lvau file-encryption CLI as request-owned work. Client cancellation terminates the child process, temporary plaintext is removed with the handler scope, uploads are bounded, and the password is read from a protected local file.
 
 See [the integration guide](./docs/integrations/lvau.md) for setup and security boundaries.
 
-## Runtime support
+## Brand assets
 
-| Capability                        | Portable core | Node.js |     Other runtimes     |
-| --------------------------------- | :-----------: | :-----: | :--------------------: |
-| Request-owned tasks and resources |      Yes      |   Yes   | Core APIs are portable |
-| Response-body lifetime tracking   |      Yes      |   Yes   |  Adapter work remains  |
-| Client disconnect integration     |       —       |   Yes   |  Adapter work remains  |
-| Graceful shutdown                 |       —       |   Yes   |  Adapter work remains  |
-| Durable deferred work             |      No       |   No    |      Not claimed       |
+- [`assets/nelo-icon.svg`](./assets/nelo-icon.svg) — primary icon for documentation and product surfaces.
+- [`assets/favicon.svg`](./assets/favicon.svg) — compact browser and site icon.
 
-Support is documented only where an adapter and its transport tests exist.
-
-## Current limits
-
-Nelo does not claim:
-
-- forced cancellation of arbitrary promises;
-- proof that a client physically received every byte;
-- durable or exactly-once background execution;
-- identical transport behavior across runtimes;
-- completed Cloudflare, Deno, or Bun adapters.
+Both assets are flat SVGs with transparent backgrounds and can be referenced directly from websites.
 
 ## Development
-
-The current package name is `@lasder/nelo`. Build and validate the source checkout with Node.js 20,
-22, or 24 and Deno 2:
 
 ```sh
 git clone https://github.com/lasder-ca/Nelo.git
 cd Nelo
 npm install
-
 npm run format
 npm run lint
 npm run typecheck
@@ -129,12 +100,6 @@ npm run build
 npm run check:package
 npm run check:tarball
 ```
-
-Useful references:
-
-- [Node.js adapter](./docs/adapters/node.md)
-- [Request ownership ADR](./docs/adr/0002-nelo-request-ownership.md)
-- [Lvau integration](./docs/integrations/lvau.md)
 
 ## License
 
