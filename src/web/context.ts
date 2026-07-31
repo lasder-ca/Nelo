@@ -1,7 +1,4 @@
-import type {
-  DeadlineDuration,
-  RequestDeadline,
-} from "../lifetime/deadline.ts";
+import type { DeadlineDuration, RequestDeadline } from "../lifetime/deadline.ts";
 import type { DeliveryContext } from "../lifetime/request-lifetime.ts";
 import type { RequestScope } from "../lifetime/scope.ts";
 import type { OwnedTask } from "../lifetime/task.ts";
