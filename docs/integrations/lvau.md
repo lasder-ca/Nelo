@@ -1,18 +1,25 @@
 # Lvau integration
 
-Nelo can own a local [`lvau-cli`](https://github.com/lasder-ca/lvau) process as part of a request. The example in [`examples/lvau-service`](../../examples/lvau-service/mod.ts) exposes a small upload-to-capsule endpoint and keeps the process, temporary files, and cleanup inside the request lifetime.
+Nelo can own a local [`lvau-cli`](https://github.com/lasder-ca/lvau) process as part of a request.
+The example in [`examples/lvau-service`](../../examples/lvau-service/mod.ts) exposes a small
+upload-to-capsule endpoint and keeps the process, temporary files, and cleanup inside the request
+lifetime.
 
 ## What the example guarantees
 
 - the upload is limited to 8 MiB before encryption starts;
 - plaintext and encrypted output are written to a private temporary directory;
 - the temporary directory is removed when the handler scope closes;
-- `lvau-cli` receives the request `AbortSignal` through `context.fork()` and is terminated when the request is cancelled;
-- the password is read by Lvau from a protected local file, not from the URL, request body, environment value, or command-line password argument;
+- `lvau-cli` receives the request `AbortSignal` through `context.fork()` and is terminated when the
+  request is cancelled;
+- the password is read by Lvau from a protected local file, not from the URL, request body,
+  environment value, or command-line password argument;
 - the `balanced` profile is selected explicitly;
 - stderr retained by the service is bounded and is not sent to the client.
 
-Cancellation prevents abandoned work from continuing. It does not make a partially completed external operation transactional, and it does not replace process isolation for an internet-facing service.
+Cancellation prevents abandoned work from continuing. It does not make a partially completed
+external operation transactional, and it does not replace process isolation for an internet-facing
+service.
 
 ## Run it
 
@@ -42,7 +49,8 @@ curl --fail-with-body \
   http://127.0.0.1:3000/encrypt
 ```
 
-On Windows, restrict the password file ACL to the account running the service. Lvau's automatic broad-permission check applies on Unix; it cannot verify an overly permissive Windows ACL.
+On Windows, restrict the password file ACL to the account running the service. Lvau's automatic
+broad-permission check applies on Unix; it cannot verify an overly permissive Windows ACL.
 
 ## Production boundary
 

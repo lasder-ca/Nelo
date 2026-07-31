@@ -73,8 +73,7 @@ app.post("/encrypt", async (context) => {
         "balanced",
       ],
       signal,
-    )
-  );
+    ));
 
   const encrypted = await readFile(outputPath);
   return new Response(encrypted, {
