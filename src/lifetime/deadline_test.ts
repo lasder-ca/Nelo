@@ -15,7 +15,18 @@ Deno.test("deadline durations parse supported units and round up fractional mill
 });
 
 Deno.test("invalid deadline durations produce a stable diagnostic", () => {
-  for (const value of [-1, Number.NaN, Number.POSITIVE_INFINITY, "10", "1d", "1e3ms"]) {
+  const invalidValues: unknown[] = [
+    -1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    "10",
+    "1d",
+    "1e3ms",
+    Symbol("deadline"),
+    Object.create(null),
+  ];
+
+  for (const value of invalidValues) {
     const error = assertThrows(
       () => parseDeadlineDuration(value as never),
       InvalidDeadlineError,
