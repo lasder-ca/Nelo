@@ -7,9 +7,12 @@ import { serve } from "@lasder/nelo/node";
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const STDERR_LIMIT = 16 * 1024;
+const DEFAULT_PROCESS_TIMEOUT_MS = 30_000;
+const MAX_PROCESS_TIMEOUT_MS = 10 * 60_000;
 
 const lvauCli = process.env.LVAU_CLI ?? "lvau-cli";
 const passwordFile = process.env.LVAU_PASSWORD_FILE;
+const processTimeoutMs = parseProcessTimeout(process.env.LVAU_TIMEOUT_MS);
 
 if (passwordFile === undefined || passwordFile.length === 0) {
   throw new Error("LVAU_PASSWORD_FILE must point to a protected password file");
@@ -23,7 +26,11 @@ class HttpError extends Error {
 }
 
 class LvauProcessError extends Error {
-  constructor(message: string, readonly stderr: string) {
+  constructor(
+    message: string,
+    readonly stderr: string,
+    readonly status = 502,
+  ) {
     super(message);
     this.name = "LvauProcessError";
   }
@@ -37,7 +44,8 @@ const app = new Nelo({
 
     if (error instanceof LvauProcessError) {
       console.error(error.stderr || error.message);
-      return Response.json({ error: "Encryption failed" }, { status: 502 });
+      const message = error.status === 504 ? "Encryption timed out" : "Encryption failed";
+      return Response.json({ error: message }, { status: error.status });
     }
 
     console.error(error);
@@ -73,6 +81,7 @@ app.post("/encrypt", async (context) => {
         "balanced",
       ],
       signal,
+      processTimeoutMs,
     ));
 
   const encrypted = await readFile(outputPath);
@@ -98,8 +107,12 @@ async function readRequestBody(
 ): Promise<Uint8Array> {
   const declaredLength = request.headers.get("content-length");
   if (declaredLength !== null) {
+    if (!/^\d+$/.test(declaredLength)) {
+      throw new HttpError(400, "Invalid Content-Length header");
+    }
+
     const length = Number(declaredLength);
-    if (!Number.isSafeInteger(length) || length < 0) {
+    if (!Number.isSafeInteger(length)) {
       throw new HttpError(400, "Invalid Content-Length header");
     }
     if (length > limit) throw new HttpError(413, "Payload is too large");
@@ -111,6 +124,13 @@ async function readRequestBody(
   const chunks: Uint8Array[] = [];
   let total = 0;
 
+  const cancelRead = (): void => {
+    void reader.cancel(signal.reason).catch(() => undefined);
+  };
+
+  if (signal.aborted) cancelRead();
+  else signal.addEventListener("abort", cancelRead, { once: true });
+
   try {
     while (true) {
       if (signal.aborted) {
@@ -118,6 +138,9 @@ async function readRequestBody(
       }
 
       const { done, value } = await reader.read();
+      if (signal.aborted) {
+        throw signal.reason ?? new Error("Request was cancelled");
+      }
       if (done) break;
 
       total += value.byteLength;
@@ -128,6 +151,7 @@ async function readRequestBody(
       chunks.push(value);
     }
   } finally {
+    signal.removeEventListener("abort", cancelRead);
     reader.releaseLock();
   }
 
@@ -140,7 +164,15 @@ async function readRequestBody(
   return body;
 }
 
-function runLvau(args: readonly string[], signal: AbortSignal): Promise<void> {
+function runLvau(
+  args: readonly string[],
+  signal: AbortSignal,
+  timeoutMs: number,
+): Promise<void> {
+  if (signal.aborted) {
+    return Promise.reject(signal.reason ?? new Error("Lvau process was cancelled"));
+  }
+
   return new Promise((resolve, reject) => {
     const child = spawn(lvauCli, args, {
       stdio: ["ignore", "ignore", "pipe"],
@@ -149,7 +181,9 @@ function runLvau(args: readonly string[], signal: AbortSignal): Promise<void> {
 
     let stderr = "";
     let settled = false;
+    let terminationError: unknown;
     let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
+    let executionTimer: ReturnType<typeof setTimeout> | undefined;
 
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", (chunk: string) => {
@@ -159,6 +193,7 @@ function runLvau(args: readonly string[], signal: AbortSignal): Promise<void> {
     const cleanup = (): void => {
       signal.removeEventListener("abort", abort);
       if (forceKillTimer !== undefined) clearTimeout(forceKillTimer);
+      if (executionTimer !== undefined) clearTimeout(executionTimer);
     };
 
     const finish = (error?: unknown): void => {
@@ -169,19 +204,29 @@ function runLvau(args: readonly string[], signal: AbortSignal): Promise<void> {
       else reject(error);
     };
 
-    const abort = (): void => {
+    const terminate = (error: unknown): void => {
+      terminationError ??= error;
       if (child.exitCode !== null || child.signalCode !== null) return;
-      child.kill();
-      forceKillTimer = setTimeout(() => child.kill("SIGKILL"), 1_000);
+
+      if (child.kill()) {
+        forceKillTimer = setTimeout(() => child.kill("SIGKILL"), 1_000);
+      }
     };
 
-    if (signal.aborted) abort();
-    else signal.addEventListener("abort", abort, { once: true });
+    const abort = (): void => {
+      terminate(signal.reason ?? new Error("Lvau process was cancelled"));
+    };
 
-    child.once("error", (error) => finish(error));
+    child.once("error", (error) => {
+      finish(
+        terminationError ??
+          new LvauProcessError("Unable to start lvau-cli", error.message),
+      );
+    });
+
     child.once("exit", (code, exitSignal) => {
-      if (signal.aborted) {
-        finish(signal.reason ?? new Error("Lvau process was cancelled"));
+      if (terminationError !== undefined) {
+        finish(terminationError);
         return;
       }
       if (code === 0) {
@@ -192,7 +237,37 @@ function runLvau(args: readonly string[], signal: AbortSignal): Promise<void> {
       const reason = code === null ? `signal ${exitSignal ?? "unknown"}` : `exit code ${code}`;
       finish(new LvauProcessError(`lvau-cli failed with ${reason}`, stderr.trim()));
     });
+
+    if (signal.aborted) abort();
+    else signal.addEventListener("abort", abort, { once: true });
+
+    executionTimer = setTimeout(
+      () =>
+        terminate(
+          new LvauProcessError(
+            `lvau-cli exceeded the ${timeoutMs}ms execution limit`,
+            stderr.trim(),
+            504,
+          ),
+        ),
+      timeoutMs,
+    );
   });
+}
+
+function parseProcessTimeout(value: string | undefined): number {
+  if (value === undefined) return DEFAULT_PROCESS_TIMEOUT_MS;
+  if (!/^\d+$/.test(value)) {
+    throw new Error("LVAU_TIMEOUT_MS must be an integer number of milliseconds");
+  }
+
+  const timeout = Number(value);
+  if (!Number.isSafeInteger(timeout) || timeout < 1_000 || timeout > MAX_PROCESS_TIMEOUT_MS) {
+    throw new Error(
+      `LVAU_TIMEOUT_MS must be between 1000 and ${MAX_PROCESS_TIMEOUT_MS}`,
+    );
+  }
+  return timeout;
 }
 
 function parsePort(value: string | undefined): number {
