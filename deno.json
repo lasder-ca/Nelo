@@ -28,7 +28,9 @@
     "include": [
       "*.ts",
       "*.json",
+      "api/**/*.ts",
       "src/**/*.ts",
+      "test/**/*.ts",
       "examples/**/*.ts",
       "scripts/**/*.ts",
       "README.md",
@@ -39,6 +41,13 @@
     "singleQuote": false
   },
   "lint": {
-    "include": ["*.ts", "src/**/*.ts", "test/**/*.ts", "examples/**/*.ts", "scripts/**/*.ts"]
+    "include": [
+      "*.ts",
+      "api/**/*.ts",
+      "src/**/*.ts",
+      "test/**/*.ts",
+      "examples/**/*.ts",
+      "scripts/**/*.ts"
+    ]
   }
 }
