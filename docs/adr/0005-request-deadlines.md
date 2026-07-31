@@ -6,9 +6,10 @@
 ## Context
 
 A request often needs a budget shorter than the full connection lifetime. Calling APIs with an
-independent `AbortSignal.timeout()` loses Nelo's typed cancellation reason and can leave a timer alive
-after the handler has finished. Cancelling the entire request scope whenever one operation reaches a
-deadline is also too broad: a handler may recover, return a fallback, or continue unrelated work.
+independent `AbortSignal.timeout()` loses Nelo's typed cancellation reason and can leave a timer
+alive after the handler has finished. Cancelling the entire request scope whenever one operation
+reaches a deadline is also too broad: a handler may recover, return a fallback, or continue
+unrelated work.
 
 The deadline API therefore needs to compose with request cancellation without pretending that
 JavaScript can forcibly stop non-cooperative work.
