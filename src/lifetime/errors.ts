@@ -12,9 +12,8 @@ export class InvalidDeadlineError extends TypeError {
   readonly code = "NELO_SCOPE_007";
 
   constructor(value: unknown) {
-    const formatted = typeof value === "string" ? JSON.stringify(value) : String(value);
     super(
-      `NELO_SCOPE_007: invalid deadline duration ${formatted}; use a non-negative number of milliseconds or a value such as "750ms", "2s", "1m", or "1h"`,
+      `NELO_SCOPE_007: invalid deadline duration ${formatDiagnosticValue(value)}; use a non-negative number of milliseconds or a value such as "750ms", "2s", "1m", or "1h"`,
     );
   }
 }
@@ -67,4 +66,12 @@ export function diagnosticCode(error: unknown): string {
     }
   }
   return "NELO_SCOPE_999";
+}
+
+function formatDiagnosticValue(value: unknown): string {
+  try {
+    return typeof value === "string" ? JSON.stringify(value) : String(value);
+  } catch {
+    return "<unprintable>";
+  }
 }
