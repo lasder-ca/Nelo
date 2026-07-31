@@ -25,7 +25,9 @@
   English · <a href="./README.ja.md">日本語</a> · <a href="https://nelo.lattee.jp">Website</a>
 </p>
 
-Nelo is a Web Standards framework that treats each request as the owner of the work it starts. A handler may return a `Response` while tasks are still running, resources are still open, or a response body is still being delivered. Nelo keeps those lifetimes explicit.
+Nelo is a Web Standards framework that treats each request as the owner of the work it starts. A
+handler may return a `Response` while tasks are still running, resources are still open, or a
+response body is still being delivered. Nelo keeps those lifetimes explicit.
 
 > Returning a `Response` is not the same as completing the request lifetime.
 
@@ -60,28 +62,33 @@ Request lifetime
     └── context.delivery.use()
 ```
 
-The handler scope closes after the handler finishes. The delivery scope remains active until the body completes, fails, is cancelled, or the transport reports a disconnect. Resources are released once in reverse acquisition order.
+The handler scope closes after the handler finishes. The delivery scope remains active until the
+body completes, fails, is cancelled, or the transport reports a disconnect. Resources are released
+once in reverse acquisition order.
 
 ## Core API
 
-| API | Purpose |
-|---|---|
-| `app.fetch(request)` | Run routing, middleware, the handler, and owned delivery. |
-| `context.fork(name, operation)` | Start an eager task owned by the request. |
-| `context.signal` | Forward cooperative cancellation to request work. |
-| `context.use(name, acquire, cleanup?)` | Acquire and release a handler-owned resource. |
-| `context.delivery.fork(name, operation)` | Start work owned by response delivery. |
-| `context.delivery.use(...)` | Keep a resource or cleanup attached to delivery. |
+| API                                      | Purpose                                                   |
+| ---------------------------------------- | --------------------------------------------------------- |
+| `app.fetch(request)`                     | Run routing, middleware, the handler, and owned delivery. |
+| `context.fork(name, operation)`          | Start an eager task owned by the request.                 |
+| `context.signal`                         | Forward cooperative cancellation to request work.         |
+| `context.use(name, acquire, cleanup?)`   | Acquire and release a handler-owned resource.             |
+| `context.delivery.fork(name, operation)` | Start work owned by response delivery.                    |
+| `context.delivery.use(...)`              | Keep a resource or cleanup attached to delivery.          |
 
 ## Lvau integration
 
-[`examples/lvau-service`](./examples/lvau-service/mod.ts) runs the Lvau file-encryption CLI as request-owned work. Client cancellation terminates the child process, temporary plaintext is removed with the handler scope, uploads are bounded, and the password is read from a protected local file.
+[`examples/lvau-service`](./examples/lvau-service/mod.ts) runs the Lvau file-encryption CLI as
+request-owned work. Client cancellation terminates the child process, temporary plaintext is removed
+with the handler scope, uploads are bounded, and the password is read from a protected local file.
 
 See [the integration guide](./docs/integrations/lvau.md) for setup and security boundaries.
 
 ## Brand assets
 
-- [`assets/nelo-icon.svg`](./assets/nelo-icon.svg) — primary icon for documentation and product surfaces.
+- [`assets/nelo-icon.svg`](./assets/nelo-icon.svg) — primary icon for documentation and product
+  surfaces.
 - [`assets/favicon.svg`](./assets/favicon.svg) — compact browser and site icon.
 
 Both assets are flat SVGs with transparent backgrounds and can be referenced directly from websites.
