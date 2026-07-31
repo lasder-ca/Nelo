@@ -13,6 +13,6 @@
     "types": ["node"],
     "skipLibCheck": false
   },
-  "include": ["src/**/*.ts", "test/node/**/*.ts"],
+  "include": ["api/**/*.ts", "src/**/*.ts", "test/node/**/*.ts"],
   "exclude": ["src/**/*_test.ts", "dist", ".tmp"]
 }
