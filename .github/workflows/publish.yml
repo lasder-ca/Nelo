@@ -50,7 +50,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install --global npm@latest
           npm ci
           npm run format:check
           npm run lint
@@ -63,7 +62,7 @@ jobs:
       - name: Publish prerelease
         shell: bash
         env:
-          # Temporary fallback until npm Trusted Publising is configured for this workflow.
+          # Temporary fallback until npm Trusted Publishing is configured for this workflow.
           # Remove this secret after the first verified OIDC-only publish.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
