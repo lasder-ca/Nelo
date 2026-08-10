@@ -12,7 +12,9 @@ Deno.test("context.forkScope owns nested tasks and cleanup", async () => {
       await scope.use(
         "database",
         () => ({ open: true }),
-        () => events.push("database:closed"),
+        () => {
+          events.push("database:closed");
+        },
       );
       return await scope.fork("query", () => ({ count: 3 }));
     });
@@ -37,7 +39,9 @@ Deno.test("delivery.forkScope owns structured delivery work", async () => {
       await scope.use(
         "segment-buffer",
         () => new Uint8Array([111, 107]),
-        () => events.push("segment:released"),
+        () => {
+          events.push("segment:released");
+        },
       );
       return await scope.fork("encode", () => new Uint8Array([111, 107]));
     });
