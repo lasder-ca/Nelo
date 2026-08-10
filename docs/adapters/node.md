@@ -26,8 +26,8 @@ option only declares the public URL scheme used by the generated Fetch `Request`
 creates a Node HTTP server and does not terminate TLS. Use `protocol: "https"` only behind a trusted
 TLS terminator that already guarantees the connection's public scheme.
 
-The converter does not trust `X-Forwarded-Host` or `X-Forwarded-Proto`. GET and HEAD requests have no
-Web body; other request bodies use Node's stream bridge with `duplex: "half"`. Malformed Host,
+The converter does not trust `X-Forwarded-Host` or `X-Forwarded-Proto`. GET and HEAD requests have
+no Web body; other request bodies use Node's stream bridge with `duplex: "half"`. Malformed Host,
 request-target, method, or Web-header conversion failures are returned as controlled HTTP 400
 responses.
 
@@ -88,8 +88,8 @@ await server.closed;
 ```
 
 `forceAfter` is measured from the start of shutdown and must be at least `gracePeriod`. Both values
-must fit Node's timer range. At grace expiry active exchange signals receive `server_shutdown`; at the
-hard deadline remaining sockets are destroyed. Nelo never calls `process.exit()` and installs no
+must fit Node's timer range. At grace expiry active exchange signals receive `server_shutdown`; at
+the hard deadline remaining sockets are destroyed. Nelo never calls `process.exit()` and installs no
 global signal handlers.
 
 The hard deadline can close a socket, but it cannot terminate arbitrary JavaScript promises. Nelo

@@ -1,11 +1,7 @@
 import type { NeloAbortReason } from "./cancellation.ts";
 import { cancellationReasonFromSignal, isCancellationReason } from "./cancellation.ts";
 import type { Cleanup } from "./resource-stack.ts";
-import {
-  LifetimeScope,
-  type LifetimeScopeSnapshot,
-  RequestScope,
-} from "./scope.ts";
+import { LifetimeScope, type LifetimeScopeSnapshot, RequestScope } from "./scope.ts";
 import type { OwnedTask } from "./task.ts";
 
 export type RequestDiagnosticState =

@@ -89,8 +89,8 @@ the handler scope closes.
 
 `forkScope()` is additive to the existing `fork()` API. It is useful when one operation owns several
 tasks, resources, or deadlines. Child lifetimes inherit cancellation and remain visible in
-`handlerTree` or `deliveryTree` diagnostics. The previous low-level `forkChild()` method remains as a
-deprecated compatibility alias.
+`handlerTree` or `deliveryTree` diagnostics. The previous low-level `forkChild()` method remains as
+a deprecated compatibility alias.
 
 ## Security boundary
 
