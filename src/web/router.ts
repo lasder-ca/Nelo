@@ -138,9 +138,10 @@ function parseRoutePath(path: string): readonly RouteSegment[] {
     if (!PARAMETER_PATTERN.test(name)) {
       throw new InvalidRouteError(`invalid route parameter in path: ${path}`);
     }
-    if (!parameterNames.add(name)) {
+    if (parameterNames.has(name)) {
       throw new InvalidRouteError(`duplicate route parameter name "${name}" in path: ${path}`);
     }
+    parameterNames.add(name);
     return { type: "parameter", name };
   });
 }
