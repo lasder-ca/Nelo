@@ -1,7 +1,11 @@
 import type { NeloAbortReason } from "./cancellation.ts";
-import { cancellationReasonFromSignal } from "./cancellation.ts";
+import { cancellationReasonFromSignal, isCancellationReason } from "./cancellation.ts";
 import type { Cleanup } from "./resource-stack.ts";
-import { LifetimeScope, RequestScope } from "./scope.ts";
+import {
+  LifetimeScope,
+  type LifetimeScopeSnapshot,
+  RequestScope,
+} from "./scope.ts";
 import type { OwnedTask } from "./task.ts";
 
 export type RequestDiagnosticState =
@@ -26,6 +30,10 @@ export interface RequestDiagnostics {
   readonly cleanupFailures: readonly CleanupFailure[];
   readonly pendingHandlerTasks: number;
   readonly pendingDeliveryTasks: number;
+  /** Full handler ownership tree, including nested forkScope() children. */
+  readonly handlerTree: LifetimeScopeSnapshot;
+  /** Full delivery ownership tree, including nested forkScope() children. */
+  readonly deliveryTree: LifetimeScopeSnapshot;
   readonly forcedTermination: boolean;
 }
 
@@ -36,6 +44,10 @@ export interface DeliveryContext {
   readonly aborted: boolean;
   readonly reason?: NeloAbortReason;
   fork<T>(name: string, operation: (signal: AbortSignal) => T | PromiseLike<T>): OwnedTask<T>;
+  forkScope<T>(
+    name: string,
+    operation: (scope: LifetimeScope) => T | PromiseLike<T>,
+  ): OwnedTask<T>;
   use(cleanup: Cleanup): void;
   use<T>(
     name: string,
@@ -117,6 +129,8 @@ export class RequestLifetime {
   snapshot(): RequestDiagnostics {
     const handlerTasks = this.handler.taskSnapshots;
     const deliveryTasks = this.delivery.taskSnapshots;
+    const handlerTree = this.handler.snapshot();
+    const deliveryTree = this.delivery.snapshot();
     const abortReason = this.signal.aborted
       ? cancellationReasonFromSignal(this.signal, {
         type: "request_error",
@@ -127,12 +141,14 @@ export class RequestLifetime {
       state: this.#state,
       handlerTasks: handlerTasks.length,
       deliveryTasks: deliveryTasks.length,
-      handlerResources: this.handler.snapshot().resourceCount,
-      deliveryResources: this.delivery.snapshot().resourceCount,
+      handlerResources: handlerTree.resourceCount,
+      deliveryResources: deliveryTree.resourceCount,
       ...(abortReason === undefined ? {} : { abortReason }),
       cleanupFailures: Object.freeze([...this.#cleanupFailures]),
       pendingHandlerTasks: handlerTasks.filter((task) => task.state === "running").length,
       pendingDeliveryTasks: deliveryTasks.filter((task) => task.state === "running").length,
+      handlerTree,
+      deliveryTree,
       forcedTermination:
         (this.#state === "completed" || this.#state === "aborted" || this.#state === "failed") &&
         [...handlerTasks, ...deliveryTasks].some((task) => task.state === "running"),
@@ -306,6 +322,5 @@ export async function ownResponseDelivery(
 }
 
 function isNeloAbortReason(value: unknown): value is NeloAbortReason {
-  return typeof value === "object" && value !== null && "type" in value &&
-    typeof value.type === "string";
+  return isCancellationReason(value);
 }

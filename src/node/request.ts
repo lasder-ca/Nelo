@@ -28,20 +28,19 @@ export function createWebRequest(
     throw new MalformedNodeRequestError("request method is missing or invalid");
   }
 
-  const headers = new Headers();
-  for (let index = 0; index < incoming.rawHeaders.length; index += 2) {
-    const name = incoming.rawHeaders[index];
-    const value = incoming.rawHeaders[index + 1];
-    if (name !== undefined && value !== undefined) headers.append(name, value);
-  }
-
-  const init: RequestInit & { duplex?: "half" } = { method, headers, signal };
-  if (method !== "GET" && method !== "HEAD") {
-    init.body = Readable.toWeb(incoming) as ReadableStream<Uint8Array>;
-    init.duplex = "half";
-  }
-
   try {
+    const headers = new Headers();
+    for (let index = 0; index < incoming.rawHeaders.length; index += 2) {
+      const name = incoming.rawHeaders[index];
+      const value = incoming.rawHeaders[index + 1];
+      if (name !== undefined && value !== undefined) headers.append(name, value);
+    }
+
+    const init: RequestInit & { duplex?: "half" } = { method, headers, signal };
+    if (method !== "GET" && method !== "HEAD") {
+      init.body = Readable.toWeb(incoming) as ReadableStream<Uint8Array>;
+      init.duplex = "half";
+    }
     return new Request(url, init);
   } catch (error) {
     throw new MalformedNodeRequestError("request could not be converted", { cause: error });
@@ -63,9 +62,7 @@ function readHost(incoming: IncomingMessage): string {
 }
 
 function validateHost(host: string, protocol: "http" | "https"): URL {
-  if (
-    !VISIBLE_ASCII.test(host) || /[\\/?#@%]/.test(host) || host.length > 255
-  ) {
+  if (!VISIBLE_ASCII.test(host) || /[\\/?#@%]/.test(host) || host.length > 255) {
     throw new MalformedNodeRequestError("Host header is invalid");
   }
   try {

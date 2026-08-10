@@ -103,8 +103,7 @@ export class Router {
     if (pathCandidates.length > 0) {
       return {
         type: "method_not_allowed",
-        allowed: [...new Set(pathCandidates.map(({ route }) => route.method))]
-          .sort(),
+        allowed: [...new Set(pathCandidates.map(({ route }) => route.method))].sort(),
       };
     }
     return { type: "not_found" };
@@ -132,11 +131,15 @@ function parseRoutePath(path: string): readonly RouteSegment[] {
   if (!path.startsWith("/")) {
     throw new InvalidRouteError(`route path must start with "/": ${path}`);
   }
+  const parameterNames = new Set<string>();
   return decodePath(path).map((segment) => {
     if (!segment.startsWith(":")) return { type: "static", value: segment };
     const name = segment.slice(1);
     if (!PARAMETER_PATTERN.test(name)) {
       throw new InvalidRouteError(`invalid route parameter in path: ${path}`);
+    }
+    if (!parameterNames.add(name)) {
+      throw new InvalidRouteError(`duplicate route parameter name "${name}" in path: ${path}`);
     }
     return { type: "parameter", name };
   });

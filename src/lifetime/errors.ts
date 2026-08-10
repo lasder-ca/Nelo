@@ -20,6 +20,19 @@ export class InvalidDeadlineError extends TypeError {
   }
 }
 
+export class InvalidTaskSettleTimeoutError extends RangeError {
+  override readonly name = "InvalidTaskSettleTimeoutError";
+  readonly code = "NELO_SCOPE_008";
+
+  constructor(value: unknown) {
+    super(
+      `NELO_SCOPE_008: invalid task settle timeout ${
+        formatDiagnosticValue(value)
+      }; use a finite value from 0 to 2147483647 milliseconds`,
+    );
+  }
+}
+
 export class UnjoinedTaskError extends Error {
   override readonly name = "UnjoinedTaskError";
   readonly code = "NELO_TASK_001";

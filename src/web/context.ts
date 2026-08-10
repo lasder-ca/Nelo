@@ -1,6 +1,6 @@
 import type { DeadlineDuration, RequestDeadline } from "../lifetime/deadline.ts";
 import type { DeliveryContext } from "../lifetime/request-lifetime.ts";
-import type { RequestScope } from "../lifetime/scope.ts";
+import type { LifetimeScope, RequestScope } from "../lifetime/scope.ts";
 import type { OwnedTask } from "../lifetime/task.ts";
 import type { NeloContext } from "./types.ts";
 
@@ -38,6 +38,13 @@ export class RequestContext implements NeloContext {
     operation: (signal: AbortSignal) => T | PromiseLike<T>,
   ): OwnedTask<T> {
     return this.#scope.fork(name, operation);
+  }
+
+  forkScope<T>(
+    name: string,
+    operation: (scope: LifetimeScope) => T | PromiseLike<T>,
+  ): OwnedTask<T> {
+    return this.#scope.forkScope(name, operation);
   }
 
   deadline(duration: DeadlineDuration): RequestDeadline {

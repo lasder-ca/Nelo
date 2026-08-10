@@ -23,6 +23,10 @@ export interface NodeCloseOptions {
 export interface NodeServeOptions {
   readonly hostname?: string;
   readonly port?: number;
+  /**
+   * Public request scheme asserted by the adapter. This does not enable TLS;
+   * use "https" only when a trusted external TLS terminator fronts this server.
+   */
   readonly protocol?: "http" | "https";
   readonly diagnostics?: NodeAdapterDiagnostics;
 }
@@ -40,6 +44,8 @@ interface ActiveExchange {
   readonly controller: AbortController;
   readonly settled: Promise<void>;
 }
+
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
 
 export function serve(app: FetchApplication, options: NodeServeOptions = {}): NeloNodeServer {
   return new NodeServer(app, options);
@@ -254,11 +260,23 @@ function validatePort(port: number): void {
 }
 
 function validateShutdown(gracePeriod: number, forceAfter: number): void {
-  if (!Number.isFinite(gracePeriod) || gracePeriod < 0) {
-    throw new NodeAdapterError("gracePeriod must be a non-negative finite number");
+  if (
+    !Number.isFinite(gracePeriod) ||
+    gracePeriod < 0 ||
+    gracePeriod > MAX_TIMER_DELAY_MS
+  ) {
+    throw new NodeAdapterError(
+      `gracePeriod must be between 0 and ${MAX_TIMER_DELAY_MS} milliseconds`,
+    );
   }
-  if (!Number.isFinite(forceAfter) || forceAfter < gracePeriod) {
-    throw new NodeAdapterError("forceAfter must be finite and at least gracePeriod");
+  if (
+    !Number.isFinite(forceAfter) ||
+    forceAfter < gracePeriod ||
+    forceAfter > MAX_TIMER_DELAY_MS
+  ) {
+    throw new NodeAdapterError(
+      `forceAfter must be between gracePeriod and ${MAX_TIMER_DELAY_MS} milliseconds`,
+    );
   }
 }
 

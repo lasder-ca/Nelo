@@ -55,11 +55,13 @@ Request lifetime
 ├── Handler scope
 │   ├── middleware
 │   ├── context.fork()
+│   ├── context.forkScope() → nested task/resource lifetime
 │   ├── context.deadline()
 │   └── context.use()
 └── Delivery scope
     ├── Response.body
     ├── context.delivery.fork()
+    ├── context.delivery.forkScope()
     └── context.delivery.use()
 ```
 
@@ -73,15 +75,29 @@ once in reverse acquisition order.
 | ---------------------------------------- | --------------------------------------------------------- |
 | `app.fetch(request)`                     | Run routing, middleware, the handler, and owned delivery. |
 | `context.fork(name, operation)`          | Start an eager task owned by the request.                 |
+| `context.forkScope(name, operation)`     | Own a nested task/resource lifetime as one task.          |
 | `context.signal`                         | Forward cooperative cancellation to request work.         |
 | `context.deadline(duration)`             | Create a disposable signal with a shorter request budget. |
 | `context.use(name, acquire, cleanup?)`   | Acquire and release a handler-owned resource.             |
 | `context.delivery.fork(name, operation)` | Start work owned by response delivery.                    |
+| `context.delivery.forkScope(...)`        | Own a nested lifetime through response delivery.          |
 | `context.delivery.use(...)`              | Keep a resource or cleanup attached to delivery.          |
 
 Deadlines accept milliseconds or values such as `750ms`, `2s`, `1m`, and `1h`. They preserve parent
 cancellation, abort with a typed `deadline` reason on expiry, and are disposed automatically when
 the handler scope closes.
+
+`forkScope()` is additive to the existing `fork()` API. It is useful when one operation owns several
+tasks, resources, or deadlines. Child lifetimes inherit cancellation and remain visible in
+`handlerTree` or `deliveryTree` diagnostics. The previous low-level `forkChild()` method remains as a
+deprecated compatibility alias.
+
+## Security boundary
+
+Nelo does not implicitly trust proxy forwarding headers. The Node adapter's `protocol: "https"`
+option declares the public Fetch URL scheme but does not enable TLS; terminate TLS in a trusted
+external server or proxy. Application-specific request-body limits remain the application's
+responsibility. See [SECURITY.md](./SECURITY.md) before deploying an Internet-facing adapter.
 
 ## Lvau integration
 
@@ -104,8 +120,8 @@ Both assets are flat SVGs with transparent backgrounds and can be referenced dir
 ```sh
 git clone https://github.com/lasder-ca/Nelo.git
 cd Nelo
-npm install
-npm run format
+npm ci
+npm run format:check
 npm run lint
 npm run typecheck
 npm test
@@ -113,6 +129,8 @@ npm run build
 npm run check:package
 npm run check:tarball
 ```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution and security expectations.
 
 ## License
 
