@@ -25,5 +25,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npm audit --audit-level=high
+      - name: Audit framework dependencies
+        run: |
+          set -euo pipefail
+          npm ci
+          npm audit --audit-level=high
+      - name: Audit website dependencies
+        run: |
+          set -euo pipefail
+          npm ci --prefix website
+          npm audit --prefix website --audit-level=high
