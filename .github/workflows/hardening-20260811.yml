@@ -37,12 +37,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx prettier --check api/nelo.ts test/node/site-api.test.ts
+          npm run format:write
+          git diff --check
+          npm run format:check
           npm run lint
           npm run typecheck
-          npm test -- --runInBand || npm test
+          npm test
           npm run build
-          npm run package:smoke
+          npm run check:package
+          npm run check:tarball
 
       - name: Commit validated source
         shell: bash
