@@ -5,6 +5,8 @@ import type { NeloAbortReason } from "../src/lifetime/cancellation.ts";
 import { diagnosticCode } from "../src/lifetime/errors.ts";
 import type { RequestDiagnostics } from "../src/lifetime/request-lifetime.ts";
 import { handleNodeExchange } from "../src/node/handler.ts";
+import { MalformedNodeRequestError } from "../src/node/errors.ts";
+import { createWebRequest } from "../src/node/request.ts";
 
 const NELO_VERSION = "0.2.0-alpha.1";
 const API_PATH = "/api/nelo";
@@ -316,10 +318,8 @@ async function writeBufferedLabResponse(
   incoming.once("close", close);
 
   try {
-    const request = new Request(createRequestUrl(incoming), {
-      method: incoming.method ?? "GET",
-      headers: createRequestHeaders(incoming),
-      signal: controller.signal,
+    const request = createWebRequest(incoming, controller.signal, {
+      protocol: requestProtocol(incoming),
     });
     const response = await handleNeloLabRequest(request);
 
@@ -335,6 +335,14 @@ async function writeBufferedLabResponse(
     outgoing.setHeader("content-length", body.byteLength);
     outgoing.end(body);
   } catch (error) {
+    if (error instanceof MalformedNodeRequestError && !outgoing.headersSent) {
+      outgoing.statusCode = 400;
+      outgoing.setHeader("cache-control", "no-store");
+      outgoing.setHeader("content-type", "application/json; charset=utf-8");
+      outgoing.setHeader("x-content-type-options", "nosniff");
+      outgoing.end(JSON.stringify({ error: "Bad Request" }));
+      return;
+    }
     if (outgoing.headersSent) {
       outgoing.destroy(error instanceof Error ? error : undefined);
       return;
@@ -488,31 +496,8 @@ function summariseDiagnostics(diagnostics: RequestDiagnostics): Record<string, u
   };
 }
 
-function createRequestUrl(request: IncomingMessage): string {
-  const protocol = requestProtocol(request);
-  const host = firstHeader(request.headers["x-forwarded-host"]) ?? request.headers.host ??
-    "nelo.lattee.jp";
-  return `${protocol}://${host}${request.url ?? API_PATH}`;
-}
-
 function requestProtocol(request: IncomingMessage): "http" | "https" {
   return firstHeader(request.headers["x-forwarded-proto"]) === "http" ? "http" : "https";
-}
-
-function createRequestHeaders(request: IncomingMessage): Headers {
-  const headers = new Headers();
-  for (const [name, rawValue] of Object.entries(request.headers)) {
-    if (
-      rawValue === undefined || name === "host" || name === "connection" ||
-      name === "content-length" || name === "transfer-encoding"
-    ) {
-      continue;
-    }
-    for (const value of Array.isArray(rawValue) ? rawValue : [rawValue]) {
-      headers.append(name, value);
-    }
-  }
-  return headers;
 }
 
 function firstHeader(value: string | string[] | undefined): string | undefined {
