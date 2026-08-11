@@ -1,0 +1,59 @@
+name: Hardening 20260811
+
+on:
+  push:
+    branches: [security/hardening-20260811]
+    paths:
+      - audit/hardening-20260811.mjs
+
+permissions:
+  contents: write
+
+jobs:
+  harden-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2.0.3
+        with:
+          deno-version: v2.x
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply hardening
+        run: node audit/hardening-20260811.mjs
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx prettier --check api/nelo.ts test/node/site-api.test.ts
+          npm run lint
+          npm run typecheck
+          npm test -- --runInBand || npm test
+          npm run build
+          npm run package:smoke
+
+      - name: Commit validated source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add api/nelo.ts test/node/site-api.test.ts
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No source changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(security): unify lab request validation boundary"
+          git push origin HEAD:security/hardening-20260811
