@@ -8,6 +8,7 @@ import { type DeadlineDuration, RequestDeadline } from "./deadline.ts";
 import { ScopeClosedError, UnjoinedTaskError } from "./errors.ts";
 import { type Cleanup, ResourceStack } from "./resource-stack.ts";
 import { OwnedTask, type OwnedTaskSnapshot, type TaskOwner } from "./task.ts";
+import { validateTaskSettleTimeout } from "./task-settle-timeout.ts";
 
 export type ScopeState = "open" | "closing" | "closed";
 
@@ -51,7 +52,10 @@ export class LifetimeScope implements TaskOwner {
     const parentSettleTimeout = options.parent === undefined
       ? undefined
       : options.parent.#taskSettleTimeout;
-    this.#taskSettleTimeout = options.taskSettleTimeout ?? parentSettleTimeout;
+    const taskSettleTimeout = options.taskSettleTimeout ?? parentSettleTimeout;
+    this.#taskSettleTimeout = taskSettleTimeout === undefined
+      ? undefined
+      : validateTaskSettleTimeout(taskSettleTimeout);
     const parentCleanupFailure = options.parent === undefined
       ? undefined
       : options.parent.#onCleanupFailure;
@@ -123,7 +127,14 @@ export class LifetimeScope implements TaskOwner {
     });
   }
 
-  forkChild<T>(
+  /**
+   * Run one structured sub-operation in its own child lifetime.
+   *
+   * The returned task remains owned by this scope. The child inherits cancellation,
+   * settlement policy, cleanup-failure observation, and resource ordering while
+   * retaining its own diagnostics tree.
+   */
+  forkScope<T>(
     name: string,
     operation: (scope: LifetimeScope) => T | PromiseLike<T>,
   ): OwnedTask<T> {
@@ -136,6 +147,14 @@ export class LifetimeScope implements TaskOwner {
         signal.removeEventListener("abort", cancelChild);
       });
     });
+  }
+
+  /** @deprecated Prefer forkScope(), which names the ownership model explicitly. */
+  forkChild<T>(
+    name: string,
+    operation: (scope: LifetimeScope) => T | PromiseLike<T>,
+  ): OwnedTask<T> {
+    return this.forkScope(name, operation);
   }
 
   async use<T>(
@@ -184,11 +203,7 @@ export class LifetimeScope implements TaskOwner {
       this.cancel({ type: "handler_failure", error: primaryFailure });
     }
 
-    try {
-      await this.close(primaryFailure);
-    } catch (error) {
-      throw error;
-    }
+    await this.close(primaryFailure);
     return value as T;
   }
 

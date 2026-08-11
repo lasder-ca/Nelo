@@ -12,10 +12,23 @@ export type CancellationReason = NeloAbortReason;
 
 export function isCancellationReason(value: unknown): value is CancellationReason {
   if (typeof value !== "object" || value === null || !("type" in value)) return false;
-  return value.type === "client_disconnect" || value.type === "deadline" ||
-    value.type === "handler_failure" || value.type === "request_error" ||
-    value.type === "delivery_error" || value.type === "server_shutdown" ||
-    value.type === "manual";
+
+  switch (value.type) {
+    case "client_disconnect":
+    case "server_shutdown":
+      return true;
+    case "deadline":
+      return "deadline" in value && typeof value.deadline === "number" &&
+        Number.isFinite(value.deadline);
+    case "handler_failure":
+    case "request_error":
+    case "delivery_error":
+      return "error" in value;
+    case "manual":
+      return true;
+    default:
+      return false;
+  }
 }
 
 export function cancellationReasonFromSignal(

@@ -21,9 +21,18 @@ Closing before listening succeeds and permanently closes that handle.
 ## Request conversion
 
 The adapter requires exactly one valid `Host` header and accepts origin-form request targets. It
-defaults the Web URL to `http:` unless `protocol: "https"` is explicitly configured. It does not
-trust `X-Forwarded-Host` or `X-Forwarded-Proto`. GET and HEAD requests have no Web body; other
-request bodies use Node's stream bridge with `duplex: "half"`.
+defaults the Web URL to `http:` unless `protocol: "https"` is explicitly configured. The `protocol`
+option only declares the public URL scheme used by the generated Fetch `Request`; `serve()` still
+creates a Node HTTP server and does not terminate TLS. Use `protocol: "https"` only behind a trusted
+TLS terminator that already guarantees the connection's public scheme.
+
+The converter does not trust `X-Forwarded-Host` or `X-Forwarded-Proto`. GET and HEAD requests have
+no Web body; other request bodies use Node's stream bridge with `duplex: "half"`. Malformed Host,
+request-target, method, or Web-header conversion failures are returned as controlled HTTP 400
+responses.
+
+Request bodies remain streaming. Nelo does not guess an application-wide upload limit; endpoints
+that accept untrusted bodies should enforce their own byte and time budgets.
 
 ## Delivery and diagnostics
 
@@ -65,7 +74,8 @@ const server = serve(app, {
 
 Delivery result `finished` is Node's local `finish`, not remote-client receipt confirmation. Request
 diagnostics report state, task and resource counts, the first abort reason, cleanup failures,
-pending tasks, and bounded forced termination. Callbacks are observational.
+pending tasks, structured ownership trees, and bounded forced termination. Callbacks are
+observational.
 
 ## Shutdown
 
@@ -77,9 +87,10 @@ await server.close({
 await server.closed;
 ```
 
-`forceAfter` is measured from the start of shutdown and must be at least `gracePeriod`. At grace
-expiry active exchange signals receive `server_shutdown`; at the hard deadline remaining sockets are
-destroyed. Nelo never calls `process.exit()` and installs no global signal handlers.
+`forceAfter` is measured from the start of shutdown and must be at least `gracePeriod`. Both values
+must fit Node's timer range. At grace expiry active exchange signals receive `server_shutdown`; at
+the hard deadline remaining sockets are destroyed. Nelo never calls `process.exit()` and installs no
+global signal handlers.
 
 The hard deadline can close a socket, but it cannot terminate arbitrary JavaScript promises. Nelo
 records work still pending after its bounded settlement wait and proceeds with cleanup.

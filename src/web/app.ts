@@ -1,5 +1,6 @@
 import { diagnosticCode, InvalidResponseError } from "../lifetime/errors.ts";
 import { ownResponseDelivery, RequestLifetime } from "../lifetime/request-lifetime.ts";
+import { validateTaskSettleTimeout } from "../lifetime/task-settle-timeout.ts";
 import { MalformedPathError } from "./errors.ts";
 import { RequestContext } from "./context.ts";
 import { runMiddleware } from "./middleware.ts";
@@ -26,7 +27,7 @@ export class Nelo {
     this.#mode = options.mode ?? "production";
     this.#onError = options.onError ?? ((error) => this.#defaultErrorHandler(error));
     this.#diagnostics = options.diagnostics;
-    this.#taskSettleTimeout = options.taskSettleTimeout ?? 1_000;
+    this.#taskSettleTimeout = validateTaskSettleTimeout(options.taskSettleTimeout ?? 1_000);
   }
 
   use(middleware: NeloMiddleware): this {
@@ -102,9 +103,7 @@ export class Nelo {
         const response = await this.#onError(error, context);
         const boundaryResponse = response instanceof Response
           ? response
-          : this.#defaultErrorHandler(
-            new InvalidResponseError(),
-          );
+          : this.#defaultErrorHandler(new InvalidResponseError());
         return await ownResponseDelivery(boundaryResponse, lifetime);
       } catch (boundaryError) {
         return await ownResponseDelivery(this.#defaultErrorHandler(boundaryError), lifetime);

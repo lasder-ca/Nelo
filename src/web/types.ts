@@ -1,6 +1,7 @@
 import type { DeadlineDuration, RequestDeadline } from "../lifetime/deadline.ts";
-import type { OwnedTask } from "../lifetime/task.ts";
 import type { DeliveryContext, RequestDiagnosticsListener } from "../lifetime/request-lifetime.ts";
+import type { LifetimeScope } from "../lifetime/scope.ts";
+import type { OwnedTask } from "../lifetime/task.ts";
 
 export interface NeloContext {
   readonly req: Request;
@@ -13,6 +14,10 @@ export interface NeloContext {
   fork<T>(
     name: string,
     operation: (signal: AbortSignal) => T | PromiseLike<T>,
+  ): OwnedTask<T>;
+  forkScope<T>(
+    name: string,
+    operation: (scope: LifetimeScope) => T | PromiseLike<T>,
   ): OwnedTask<T>;
   deadline(duration: DeadlineDuration): RequestDeadline;
   use<T>(

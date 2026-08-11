@@ -2,18 +2,12 @@ name: Publish package
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/publish.yml
-      - .npm-publish-trigger
   release:
     types: [published]
 
 permissions:
   contents: read
   id-token: write
-  statuses: write
 
 concurrency:
   group: npm-publish-${{ github.ref }}
@@ -23,115 +17,74 @@ jobs:
   publish:
     if: github.repository == 'lasder-ca/Nelo'
     runs-on: ubuntu-latest
+    environment: npm
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
 
-      - uses: actions/setup-node@v7
+      - name: Require the publish commit to be current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          main_sha="$(git rev-parse origin/main)"
+          head_sha="$(git rev-parse HEAD)"
+          test "${head_sha}" = "${main_sha}" || {
+            echo "npm publish must run from current main (${main_sha}), got ${head_sha}" >&2
+            exit 1
+          }
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
-      - uses: denoland/setup-deno@v2
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2 snapshot
         with:
           deno-version: v2.x
 
-      - name: Validate and publish Nelo
+      - name: Validate package without publish credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run format:check
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+          npm run check:package
+          npm run check:tarball
+
+      - name: Publish prerelease
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          # Temporary fallback until npm Trusted Publishing is configured for this workflow.
+          # Remove this secret after the first verified OIDC-only publish.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          set +e
-          log_file="$(mktemp)"
-          failed_stage="unknown"
+          set -euo pipefail
+          package_name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
 
-          run_stage() {
-            local stage="$1"
-            shift
-            echo "==> ${stage}"
-            "$@"
-            local result=$?
-            if [ "${result}" -ne 0 ]; then
-              failed_stage="${stage}"
-            fi
-            return "${result}"
-          }
-
-          publish_package() {
-            local package_name version npm_user encoded
-            npm_user="$(npm whoami)" || return $?
-            echo "publishing as ${npm_user}"
-            package_name="$(node -p "require('./package.json').name")" || return $?
-            version="$(node -p "require('./package.json').version")" || return $?
-
-            if npm view "${package_name}@${version}" version >/dev/null 2>&1; then
-              echo "${package_name}@${version} is already published"
-            else
-              npm publish --access public --tag next --provenance || return $?
-            fi
-
-            npm access set status=public "${package_name}" || return $?
-            encoded="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "${package_name}")" || return $?
-
-            for attempt in $(seq 1 12); do
-              if curl --fail --silent --show-error \
-                "https://registry.npmjs.org/${encoded}" >/dev/null; then
-                echo "${package_name}@${version} is publicly available"
-                return 0
-              fi
-              echo "waiting for public registry propagation (${attempt}/12)"
-              sleep 5
-            done
-
-            echo "${package_name}@${version} is not publicly readable" >&2
-            return 1
-          }
-
-          {
-            run_stage npm-cli npm install --global npm@latest &&
-            run_stage install npm ci &&
-            run_stage format npm run format:check &&
-            run_stage lint npm run lint &&
-            run_stage typecheck npm run typecheck &&
-            run_stage test npm test &&
-            run_stage build npm run build &&
-            run_stage package-smoke npm run check:package &&
-            run_stage tarball-smoke npm run check:tarball &&
-            run_stage publish publish_package
-          } >"${log_file}" 2>&1
-          exit_code=$?
-          cat "${log_file}"
-
-          npm_user="$(sed -n 's/^publishing as //p' "${log_file}" | tail -n 1 | tr -cd 'A-Za-z0-9._-')"
-          if [ -z "${npm_user}" ]; then
-            npm_user="unknown"
-          fi
-
-          if [ "${exit_code}" -eq 0 ]; then
-            state="success"
-            context="npm/publish (${npm_user})"
-            description="Nelo prerelease is public on npm"
+          if npm view "${package_name}@${version}" version >/dev/null 2>&1; then
+            echo "${package_name}@${version} is already published"
           else
-            state="failure"
-            error_code="$(sed -n 's/^npm error code //p' "${log_file}" | tail -n 1 | tr -cd 'A-Za-z0-9_-')"
-            error_detail="$(grep '^npm error' "${log_file}" | grep -v 'npm error code ' | grep -v 'complete log' | head -n 1 | sed 's/^npm error //' | tr '\n\r\"/' '    ' | sed 's/[[:space:]]\+/ /g' | cut -c1-58)"
-            if [ -z "${error_code}" ]; then
-              error_code="ERROR"
-            fi
-            if [ -z "${error_detail}" ]; then
-              error_detail="publish failed"
-            fi
-            context="npm/publish (${npm_user}): ${failed_stage}: ${error_code} ${error_detail}"
-            description="Nelo npm publish failed"
+            npm publish --access public --tag next --provenance
           fi
 
-          payload="$(node -e 'console.log(JSON.stringify({state: process.argv[1], context: process.argv[2], description: process.argv[3]}))' "${state}" "${context}" "${description}")"
-          curl --fail-with-body --silent --show-error \
-            --request POST \
-            --header "Authorization: Bearer ${GH_TOKEN}" \
-            --header "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            --data "${payload}"
-
-          exit "${exit_code}"
+          npm access set status=public "${package_name}"
+          encoded="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "${package_name}")"
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error "https://registry.npmjs.org/${encoded}" >/dev/null; then
+              echo "${package_name}@${version} is publicly available"
+              exit 0
+            fi
+            echo "waiting for public registry propagation (${attempt}/12)"
+            sleep 5
+          done
+          echo "${package_name}@${version} is not publicly readable" >&2
+          exit 1

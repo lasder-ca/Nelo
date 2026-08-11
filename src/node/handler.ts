@@ -26,6 +26,7 @@ export async function handleNodeExchange(
   hooks: NodeExchangeHooks = {},
 ): Promise<NodeDeliveryResult> {
   const monitor = monitorDisconnect(request, response, controller);
+  let unsubscribe: (() => void) | undefined;
   try {
     let webRequest: Request;
     try {
@@ -45,7 +46,7 @@ export async function handleNodeExchange(
 
     const webResponse = await app.fetch(webRequest);
     const lifetime = responseLifetime(webResponse);
-    const unsubscribe = hooks.onRequestDiagnostics === undefined
+    unsubscribe = hooks.onRequestDiagnostics === undefined
       ? undefined
       : lifetime?.subscribe(hooks.onRequestDiagnostics);
     const result = await writeNodeResponse(
@@ -57,7 +58,6 @@ export async function handleNodeExchange(
     );
     reportDelivery(hooks, result);
     if (result.state === "failed" && result.error !== undefined) reportError(hooks, result.error);
-    unsubscribe?.();
     return result;
   } catch (error) {
     reportError(hooks, error);
@@ -66,6 +66,7 @@ export async function handleNodeExchange(
     reportDelivery(hooks, result);
     return result;
   } finally {
+    unsubscribe?.();
     monitor.dispose();
   }
 }

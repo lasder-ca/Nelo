@@ -55,11 +55,13 @@ await server.listen();
 ├── ハンドラースコープ
 │   ├── middleware
 │   ├── context.fork()
+│   ├── context.forkScope() → 入れ子のタスク/リソースのライフタイム
 │   ├── context.deadline()
 │   └── context.use()
 └── デリバリースコープ
     ├── Response.body
     ├── context.delivery.fork()
+    ├── context.delivery.forkScope()
     └── context.delivery.use()
 ```
 
@@ -71,13 +73,23 @@ await server.listen();
 |---|---|
 | `app.fetch(request)` | ルーティング、ミドルウェア、ハンドラー、配信を実行します。 |
 | `context.fork(name, operation)` | リクエストが所有するタスクを開始します。 |
+| `context.forkScope(name, operation)` | 複数のタスクやリソースを持つ入れ子のライフタイムを1つの所有タスクとして扱います。 |
 | `context.signal` | リクエストの中断通知を処理へ渡します。 |
 | `context.deadline(duration)` | リクエストより短い処理期限を持つSignalを作ります。 |
 | `context.use(name, acquire, cleanup?)` | ハンドラーが所有するリソースを取得・解放します。 |
 | `context.delivery.fork(name, operation)` | レスポンス配信が所有する処理を開始します。 |
+| `context.delivery.forkScope(...)` | 配信中に入れ子のライフタイムを所有します。 |
 | `context.delivery.use(...)` | リソースや後片付けを配信終了まで保持します。 |
 
 期限にはミリ秒の数値、または`750ms`、`2s`、`1m`、`1h`のような値を指定できます。親リクエストの中断理由を引き継ぎ、期限切れ時は型付きの`deadline`理由で中断し、ハンドラースコープ終了時に自動解放されます。
+
+`forkScope()`は既存の`fork()`を置き換えるものではなく追加APIです。1つの処理が複数のタスク、リソース、deadlineを所有するときに使えます。子ライフタイムは親の中断を引き継ぎ、`handlerTree` / `deliveryTree`の診断にも残ります。従来の低レベル`forkChild()`は互換性のためdeprecated aliasとして残しています。
+
+## セキュリティ境界
+
+Neloはproxyのforwarding headerを暗黙には信頼しません。Node adapterの`protocol: "https"`はFetch `Request`へ渡す公開URL schemeを指定するだけで、TLSを有効化する設定ではありません。HTTPSとして使う場合は、信頼できる外部server/proxyでTLSを終端してください。
+
+request bodyはstreamingのまま扱われます。アップロード上限はendpointごとに要件が異なるため、アプリ側でbyte数・時間の上限を設定します。Internetへ公開する前に[SECURITY.md](./SECURITY.md)も確認してください。
 
 ## Lvau連携
 
@@ -97,8 +109,8 @@ await server.listen();
 ```sh
 git clone https://github.com/lasder-ca/Nelo.git
 cd Nelo
-npm install
-npm run format
+npm ci
+npm run format:check
 npm run lint
 npm run typecheck
 npm test
@@ -106,6 +118,8 @@ npm run build
 npm run check:package
 npm run check:tarball
 ```
+
+貢献方法とsecurity-sensitiveな変更の確認事項は[CONTRIBUTING.md](./CONTRIBUTING.md)を参照してください。
 
 ## ライセンス
 
