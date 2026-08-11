@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { createServer, request as createHttpRequest } from "node:http";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
-import {
+import neloLabHandler, {
   createDeliveryLabApplication,
   handleNeloLabRequest,
   type LabEvent,
@@ -117,6 +117,28 @@ test("client disconnect cancels the owned delivery stream before cleanup", async
     );
     assert.deepEqual(cleanup.detail, { reason: { type: "client_disconnect" } });
   });
+});
+
+test("the live lab ignores untrusted forwarded host input", async () => {
+  const server = createServer((request, response) => {
+    void neloLabHandler(request, response);
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address() as AddressInfo;
+
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/nelo?scenario=health`,
+      { headers: { "x-forwarded-host": "evil.example/redirect?x=1" } },
+    );
+    const payload = await readPayload(response);
+    assert.equal(response.status, 200);
+    assert.equal(payload.scenario, "health");
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
 });
 
 test("invalid lab input receives a bounded JSON error", async () => {
