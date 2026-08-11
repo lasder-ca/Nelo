@@ -25,11 +25,17 @@ replaceOnce(
   `  } catch (error) {\n    if (error instanceof MalformedNodeRequestError && !outgoing.headersSent) {\n      outgoing.statusCode = 400;\n      outgoing.setHeader("cache-control", "no-store");\n      outgoing.setHeader("content-type", "application/json; charset=utf-8");\n      outgoing.setHeader("x-content-type-options", "nosniff");\n      outgoing.end(JSON.stringify({ error: "Bad Request" }));\n      return;\n    }\n    if (outgoing.headersSent) {`,
 );
 
-const api = readFileSync("api/nelo.ts", "utf8");
-const start = api.indexOf("function createRequestUrl(request: IncomingMessage): string {");
-const end = api.indexOf("function requestProtocol(request: IncomingMessage): \"http\" | \"https\" {", start);
+let api = readFileSync("api/nelo.ts", "utf8");
+let start = api.indexOf("function createRequestUrl(request: IncomingMessage): string {");
+let end = api.indexOf("function requestProtocol(request: IncomingMessage): \"http\" | \"https\" {", start);
 if (start < 0 || end < 0) throw new Error("api/nelo.ts: request URL helper block not found");
-writeFileSync("api/nelo.ts", api.slice(0, start) + api.slice(end));
+api = api.slice(0, start) + api.slice(end);
+
+start = api.indexOf("function createRequestHeaders(request: IncomingMessage): Headers {");
+end = api.indexOf("function firstHeader(value: string | string[] | undefined): string | undefined {", start);
+if (start < 0 || end < 0) throw new Error("api/nelo.ts: request header helper block not found");
+api = api.slice(0, start) + api.slice(end);
+writeFileSync("api/nelo.ts", api);
 
 replaceOnce(
   "test/node/site-api.test.ts",
