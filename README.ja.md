@@ -11,12 +11,12 @@
 </p>
 
 <p align="center">
-  <strong>TypeScriptのリクエストに、タスク、リソース、中断、レスポンス配信を所有させます。</strong>
+  <strong>TypeScriptのリクエストに、タスク、リソース、中断、レスポンス配信、Deferred Workを所有させます。</strong>
 </p>
 
 <p align="center">
   <img alt="実験的" src="https://img.shields.io/badge/status-experimental-6d7178">
-  <img alt="Version 0.2.0 alpha 1" src="https://img.shields.io/badge/version-0.2.0--alpha.1-2864dc">
+  <img alt="Version 0.2.0 alpha 2" src="https://img.shields.io/badge/version-0.2.0--alpha.2-2864dc">
   <img alt="Strict TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6">
   <a href="./LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-5bc8ad"></a>
 </p>
@@ -25,7 +25,7 @@
   <a href="./README.md">English</a> · 日本語 · <a href="https://nelo.lattee.jp">Webサイト</a>
 </p>
 
-Neloは、各リクエストを、そのリクエストから始まった処理の所有者として扱うWeb Standardsベースのフレームワークです。ハンドラーが`Response`を返したあとも残るタスク、リソース、レスポンス本文の寿命を明示します。
+Neloは、各リクエストを、そのリクエストから始まった処理の所有者として扱うWeb Standardsベースのフレームワークです。ハンドラーが`Response`を返したあとも残るタスク、リソース、レスポンス本文、明示的に移譲されたDeferred Workの寿命を明示します。
 
 > `Response`を返した時点で、リクエストに関係する処理がすべて終わるとは限りません。
 
@@ -58,14 +58,16 @@ await server.listen();
 │   ├── context.forkScope() → 入れ子のタスク/リソースのライフタイム
 │   ├── context.deadline()
 │   └── context.use()
-└── デリバリースコープ
-    ├── Response.body
-    ├── context.delivery.fork()
-    ├── context.delivery.forkScope()
-    └── context.delivery.use()
+├── デリバリースコープ
+│   ├── Response.body
+│   ├── context.delivery.fork()
+│   ├── context.delivery.forkScope()
+│   └── context.delivery.use()
+└── Deferredスコープ
+    └── context.defer() → レスポンス後の明示的な所有権移譲
 ```
 
-ハンドラースコープはハンドラー終了後に閉じます。デリバリースコープは、本文の完了、失敗、中断、接続切断まで残ります。リソースは一度だけ、取得した順序と逆に解放されます。
+ハンドラースコープはハンドラー終了後に閉じます。デリバリースコープは、本文の完了、失敗、中断、接続切断まで残ります。Deferredスコープはレスポンス後も続ける処理を明示的に移譲し、対応adapterが追跡します。リソースは一度だけ、取得した順序と逆に解放されます。
 
 ## 主なAPI
 
@@ -76,6 +78,7 @@ await server.listen();
 | `context.forkScope(name, operation)` | 複数のタスクやリソースを持つ入れ子のライフタイムを1つの所有タスクとして扱います。 |
 | `context.signal` | リクエストの中断通知を処理へ渡します。 |
 | `context.deadline(duration)` | リクエストより短い処理期限を持つSignalを作ります。 |
+| `context.defer(name, operation)` | best-effort処理をレスポンス後へ明示的に移譲します。 |
 | `context.use(name, acquire, cleanup?)` | ハンドラーが所有するリソースを取得・解放します。 |
 | `context.delivery.fork(name, operation)` | レスポンス配信が所有する処理を開始します。 |
 | `context.delivery.forkScope(...)` | 配信中に入れ子のライフタイムを所有します。 |
@@ -84,6 +87,12 @@ await server.listen();
 期限にはミリ秒の数値、または`750ms`、`2s`、`1m`、`1h`のような値を指定できます。親リクエストの中断理由を引き継ぎ、期限切れ時は型付きの`deadline`理由で中断し、ハンドラースコープ終了時に自動解放されます。
 
 `forkScope()`は既存の`fork()`を置き換えるものではなく追加APIです。1つの処理が複数のタスク、リソース、deadlineを所有するときに使えます。子ライフタイムは親の中断を引き継ぎ、`handlerTree` / `deliveryTree`の診断にも残ります。従来の低レベル`forkChild()`は互換性のためdeprecated aliasとして残しています。
+
+### Deferred work
+
+`context.defer(name, operation)`は、レスポンス後も続けたいbest-effort処理を明示的に移譲します。処理には独立した`AbortSignal`が渡され、失敗は`NELO_DEFERRED_002`として観測できます。Deferred Workを提供しないruntimeでは`NELO_DEFERRED_001`で明示的に失敗し、所有者のないbackground Promiseを暗黙には作りません。
+
+Node adapterはprocess内でDeferred Workを追跡します。`server.close()`は既存HTTP exchangeを先にdrainし、その後、残りのgrace期間でDeferred taskを待ちます。期限を超えた処理には`server_shutdown`を通知します。これは永続queue、retry、exactly-onceを保証する仕組みではありません。
 
 ## セキュリティ境界
 
