@@ -35,8 +35,8 @@ runtime context and Node supplies it automatically. Existing `FetchApplication` 
 ignore the optional second argument. Existing request, delivery, task, resource, and deadline APIs
 retain their behavior.
 
-`RequestDiagnostics` gains deferred-work fields. The package remains prerelease and advances from
-`0.2.0-alpha.1` to `0.2.0-alpha.2`.
+`RequestDiagnostics` gains deferred-work fields. These semantics ship in Nelo `0.2.0` after being
+validated through the `0.2.0-alpha.2` prerelease cycle.
 
 ## Testing
 
