@@ -12,10 +12,11 @@ returns would make ownership, shutdown, cancellation, and failure reporting impl
 ## Decision
 
 Nelo adds `context.defer(name, operation)`. A deferred operation starts eagerly through a runtime
-registrar, receives its own `AbortSignal`, is marked as transferred ownership, and does not delay the
-HTTP response. Request diagnostics report deferred task counts, pending work, ancestry, and failures.
-A runtime without a registrar rejects `defer()` with `NELO_DEFERRED_001` rather than silently
-creating unowned background work. Deferred task failures are reported as `NELO_DEFERRED_002`.
+registrar, receives its own `AbortSignal`, is marked as transferred ownership, and does not delay
+the HTTP response. Request diagnostics report deferred task counts, pending work, ancestry, and
+failures. A runtime without a registrar rejects `defer()` with `NELO_DEFERRED_001` rather than
+silently creating unowned background work. Deferred task failures are reported as
+`NELO_DEFERRED_002`.
 
 The Node adapter implements the registrar with an in-process `DeferredWorkRegistry` and advertises
 `nodeCapabilities.deferredWork === "process_tracked"`. During shutdown Node first drains active HTTP
