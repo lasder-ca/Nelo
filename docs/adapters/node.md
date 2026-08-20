@@ -77,6 +77,20 @@ diagnostics report state, task and resource counts, the first abort reason, clea
 pending tasks, structured ownership trees, and bounded forced termination. Callbacks are
 observational.
 
+## Deferred work
+
+The Node adapter advertises `nodeCapabilities.deferredWork` as `process_tracked`. Calling
+`context.defer(name, operation)` starts best-effort work that is owned by the server process rather
+than response delivery. The HTTP response does not wait for it.
+
+Deferred failures are sent to `diagnostics.onError` as `NELO_DEFERRED_002`. Request diagnostics also
+include deferred task counts, pending work, ancestry, and failures. During shutdown Nelo drains
+active exchanges before checking deferred work so an in-flight request cannot register work after
+the shutdown code has already observed an empty deferred registry.
+
+Process tracking is not durability. A process crash loses the work, there are no automatic retries,
+and a task that ignores its signal cannot be forcibly terminated.
+
 ## Shutdown
 
 ```ts
@@ -88,9 +102,10 @@ await server.closed;
 ```
 
 `forceAfter` is measured from the start of shutdown and must be at least `gracePeriod`. Both values
-must fit Node's timer range. At grace expiry active exchange signals receive `server_shutdown`; at
-the hard deadline remaining sockets are destroyed. Nelo never calls `process.exit()` and installs no
-global signal handlers.
+must fit Node's timer range. Nelo first drains active exchanges and then deferred work within the
+grace budget. At grace expiry active exchange and deferred-work signals receive `server_shutdown`;
+at the hard deadline remaining sockets are destroyed. Nelo never calls `process.exit()` and installs
+no global signal handlers.
 
 The hard deadline can close a socket, but it cannot terminate arbitrary JavaScript promises. Nelo
 records work still pending after its bounded settlement wait and proceeds with cleanup.

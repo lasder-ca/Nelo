@@ -8,7 +8,7 @@ import { handleNodeExchange } from "../src/node/handler.ts";
 import { MalformedNodeRequestError } from "../src/node/errors.ts";
 import { createWebRequest } from "../src/node/request.ts";
 
-const NELO_VERSION = "0.2.0-alpha.1";
+const NELO_VERSION = "0.2.0";
 const API_PATH = "/api/nelo";
 
 type LabScenario = "health" | "tasks" | "deadline" | "resource" | "delivery";

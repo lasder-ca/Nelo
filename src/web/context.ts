@@ -1,20 +1,29 @@
 import type { DeadlineDuration, RequestDeadline } from "../lifetime/deadline.ts";
-import type { DeliveryContext } from "../lifetime/request-lifetime.ts";
+import type { DeferredWorkRegistrar } from "../lifetime/deferred.ts";
+import { DeferredWorkUnavailableError, ScopeClosedError } from "../lifetime/errors.ts";
+import type { DeliveryContext, RequestLifetime } from "../lifetime/request-lifetime.ts";
 import type { LifetimeScope, RequestScope } from "../lifetime/scope.ts";
 import type { OwnedTask } from "../lifetime/task.ts";
 import type { NeloContext } from "./types.ts";
 
 export class RequestContext implements NeloContext {
   readonly #scope: RequestScope;
+  readonly #lifetime: RequestLifetime;
+  readonly #deferredWork?: DeferredWorkRegistrar;
   readonly params: Readonly<Record<string, string>>;
+  readonly delivery: DeliveryContext;
 
   constructor(
     readonly req: Request,
     scope: RequestScope,
-    readonly delivery: DeliveryContext,
+    lifetime: RequestLifetime,
     params: Readonly<Record<string, string>>,
+    deferredWork?: DeferredWorkRegistrar,
   ) {
     this.#scope = scope;
+    this.#lifetime = lifetime;
+    this.#deferredWork = deferredWork;
+    this.delivery = lifetime.delivery;
     this.params = Object.freeze({ ...params });
   }
 
@@ -49,6 +58,16 @@ export class RequestContext implements NeloContext {
 
   deadline(duration: DeadlineDuration): RequestDeadline {
     return this.#scope.deadline(duration);
+  }
+
+  defer(
+    name: string,
+    operation: (signal: AbortSignal) => unknown | PromiseLike<unknown>,
+  ): void {
+    if (this.#scope.state !== "open") throw new ScopeClosedError("defer work");
+    if (this.#deferredWork === undefined) throw new DeferredWorkUnavailableError();
+    const task = this.#deferredWork.defer(this.#lifetime.deferredOwner, name, operation);
+    this.#lifetime.trackDeferred(task);
   }
 
   use<T>(

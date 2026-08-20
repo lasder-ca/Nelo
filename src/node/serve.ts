@@ -1,6 +1,7 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo, Socket } from "node:net";
 import type { CancellationReason } from "../lifetime/cancellation.ts";
+import { DeferredWorkRegistry } from "../lifetime/deferred.ts";
 import { abortOnce } from "./disconnect.ts";
 import { NodeAdapterError } from "./errors.ts";
 import {
@@ -56,6 +57,7 @@ class NodeServer implements NeloNodeServer {
   readonly #sockets = new Set<Socket>();
   readonly #active = new Set<ActiveExchange>();
   readonly #emptyWaiters = new Set<() => void>();
+  readonly #deferred: DeferredWorkRegistry;
   readonly #options:
     & Required<Pick<NodeServeOptions, "hostname" | "port" | "protocol">>
     & Pick<NodeServeOptions, "diagnostics">;
@@ -75,6 +77,7 @@ class NodeServer implements NeloNodeServer {
       diagnostics: options.diagnostics,
     };
     validatePort(this.#options.port);
+    this.#deferred = new DeferredWorkRegistry((error) => this.#notifyError(error));
     this.closed = this.#closedDeferred.promise;
     this.closed.catch(() => undefined);
     this.#server = createServer((request, response) => {
@@ -93,6 +96,7 @@ class NodeServer implements NeloNodeServer {
           controller,
           { protocol: this.#options.protocol },
           this.#options.diagnostics,
+          { deferredWork: this.#deferred },
         ).then(() => undefined),
       };
       this.#active.add(exchange);
@@ -111,6 +115,7 @@ class NodeServer implements NeloNodeServer {
     this.#server.on("error", (error) => {
       if (this.#state === "listening" || this.#state === "closing") {
         this.#abortActive({ type: "server_shutdown" });
+        this.#deferred.abort({ type: "server_shutdown" });
         this.#fail(error);
       }
     });
@@ -162,6 +167,7 @@ class NodeServer implements NeloNodeServer {
   close(options: NodeCloseOptions = {}): Promise<void> {
     if (this.#closePromise !== undefined) return this.#closePromise;
     if (this.#state === "idle") {
+      this.#deferred.seal();
       this.#state = "closed";
       this.#closedDeferred.resolve();
       this.#closePromise = Promise.resolve();
@@ -196,12 +202,27 @@ class NodeServer implements NeloNodeServer {
       this.#server.closeIdleConnections();
     });
     try {
-      const graceful = await waitWithin(this.#whenEmpty(), gracePeriod);
-      if (!graceful) this.#abortActive({ type: "server_shutdown" });
+      // Existing requests may register deferred work until they finish, so drain
+      // exchanges first and only then take the deferred-work emptiness snapshot.
+      const requestsDrained = await waitWithin(this.#whenEmpty(), gracePeriod);
+      const graceRemaining = Math.max(0, gracePeriod - (Date.now() - startedAt));
+      const deferredDrained = requestsDrained
+        ? await waitWithin(this.#deferred.whenEmpty(), graceRemaining)
+        : false;
+      if (!requestsDrained || !deferredDrained) {
+        this.#abortActive({ type: "server_shutdown" });
+        this.#deferred.abort({ type: "server_shutdown" });
+      } else {
+        this.#deferred.seal();
+      }
 
       const remaining = Math.max(0, forceAfter - (Date.now() - startedAt));
-      const settled = await waitWithin(Promise.all([this.#whenEmpty(), serverClosed]), remaining);
+      const settled = await waitWithin(
+        Promise.all([this.#whenEmpty(), this.#deferred.whenEmpty(), serverClosed]),
+        remaining,
+      );
       if (!settled) {
+        this.#deferred.abort({ type: "server_shutdown" });
         for (const socket of this.#sockets) socket.destroy();
         this.#server.closeAllConnections();
         await serverClosed;
@@ -209,6 +230,7 @@ class NodeServer implements NeloNodeServer {
       this.#state = "closed";
       this.#closedDeferred.resolve();
     } catch (error) {
+      this.#deferred.abort({ type: "server_shutdown" });
       this.#fail(error);
       throw error;
     }

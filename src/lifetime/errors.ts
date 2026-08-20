@@ -45,6 +45,30 @@ export class UnjoinedTaskError extends Error {
   }
 }
 
+export class DeferredWorkUnavailableError extends Error {
+  override readonly name = "DeferredWorkUnavailableError";
+  readonly code = "NELO_DEFERRED_001";
+
+  constructor() {
+    super(
+      "NELO_DEFERRED_001: deferred work is unavailable in this runtime; use an adapter that provides a deferred-work registrar",
+    );
+  }
+}
+
+export class DeferredTaskError extends Error {
+  override readonly name = "DeferredTaskError";
+  readonly code = "NELO_DEFERRED_002";
+
+  constructor(
+    readonly taskName: string,
+    readonly ancestry: readonly string[],
+    cause: unknown,
+  ) {
+    super(`NELO_DEFERRED_002: deferred task "${taskName}" failed`, { cause });
+  }
+}
+
 export class InvalidResourceError extends TypeError {
   override readonly name = "InvalidResourceError";
   readonly code = "NELO_RESOURCE_001";

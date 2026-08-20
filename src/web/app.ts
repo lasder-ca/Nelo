@@ -1,4 +1,5 @@
 import { diagnosticCode, InvalidResponseError } from "../lifetime/errors.ts";
+import type { NeloRuntimeContext } from "../lifetime/deferred.ts";
 import { ownResponseDelivery, RequestLifetime } from "../lifetime/request-lifetime.ts";
 import { validateTaskSettleTimeout } from "../lifetime/task-settle-timeout.ts";
 import { MalformedPathError } from "./errors.ts";
@@ -63,11 +64,17 @@ export class Nelo {
     return this.on("DELETE", path, ...chain);
   }
 
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, runtime: NeloRuntimeContext = {}): Promise<Response> {
     const lifetime = new RequestLifetime(request.signal, this.#taskSettleTimeout);
     this.#diagnostics !== undefined && lifetime.subscribe(this.#diagnostics);
     const scope = lifetime.handler;
-    let context: NeloContext = new RequestContext(request, scope, lifetime.delivery, {});
+    let context: NeloContext = new RequestContext(
+      request,
+      scope,
+      lifetime,
+      {},
+      runtime.deferredWork,
+    );
 
     try {
       const response = await scope.execute(async () => {
@@ -76,7 +83,13 @@ export class Nelo {
         let routeMiddleware: readonly NeloMiddleware[] = [];
 
         if (match.type === "match") {
-          context = new RequestContext(request, scope, lifetime.delivery, match.params);
+          context = new RequestContext(
+            request,
+            scope,
+            lifetime,
+            match.params,
+            runtime.deferredWork,
+          );
           routeMiddleware = match.middleware;
           handler = match.handler;
         } else if (match.type === "method_not_allowed") {

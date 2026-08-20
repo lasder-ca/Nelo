@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { NeloRuntimeContext } from "../lifetime/deferred.ts";
 import { type RequestDiagnosticsListener, responseLifetime } from "../lifetime/request-lifetime.ts";
 import { monitorDisconnect } from "./disconnect.ts";
 import { type NodeDeliveryHooks, type NodeDeliveryResult, writeNodeResponse } from "./delivery.ts";
@@ -6,7 +7,7 @@ import { MalformedNodeRequestError } from "./errors.ts";
 import { createWebRequest, type NodeRequestOptions } from "./request.ts";
 
 export interface FetchApplication {
-  fetch(request: Request): Promise<Response>;
+  fetch(request: Request, runtime?: NeloRuntimeContext): Promise<Response>;
 }
 
 export interface NodeAdapterDiagnostics {
@@ -24,9 +25,11 @@ export async function handleNodeExchange(
   controller: AbortController,
   options: NodeRequestOptions = {},
   hooks: NodeExchangeHooks = {},
+  runtime: NeloRuntimeContext = {},
 ): Promise<NodeDeliveryResult> {
   const monitor = monitorDisconnect(request, response, controller);
   let unsubscribe: (() => void) | undefined;
+  let diagnosticsCompletion: Promise<void> | undefined;
   try {
     let webRequest: Request;
     try {
@@ -44,11 +47,14 @@ export async function handleNodeExchange(
       return result;
     }
 
-    const webResponse = await app.fetch(webRequest);
+    const webResponse = await app.fetch(webRequest, runtime);
     const lifetime = responseLifetime(webResponse);
     unsubscribe = hooks.onRequestDiagnostics === undefined
       ? undefined
       : lifetime?.subscribe(hooks.onRequestDiagnostics);
+    if (unsubscribe !== undefined && lifetime?.hasDeferredWork) {
+      diagnosticsCompletion = lifetime.deferredSettled;
+    }
     const result = await writeNodeResponse(
       webRequest.method,
       webResponse,
@@ -66,7 +72,10 @@ export async function handleNodeExchange(
     reportDelivery(hooks, result);
     return result;
   } finally {
-    unsubscribe?.();
+    if (unsubscribe !== undefined) {
+      if (diagnosticsCompletion === undefined) unsubscribe();
+      else void diagnosticsCompletion.then(unsubscribe);
+    }
     monitor.dispose();
   }
 }

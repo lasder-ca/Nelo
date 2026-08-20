@@ -12,6 +12,10 @@ export interface TaskOwner {
   readonly ancestry: readonly string[];
 }
 
+export interface OwnedTaskOptions {
+  readonly transferred?: boolean;
+}
+
 export interface OwnedTaskSnapshot {
   readonly name: string;
   readonly ancestry: readonly string[];
@@ -29,14 +33,16 @@ export class OwnedTask<T> implements PromiseLike<T> {
   readonly #settled: Promise<void>;
   #state: OwnedTaskState = "running";
   #observed = false;
-  #transferred = false;
+  readonly #transferred: boolean;
   #failure: unknown;
 
   constructor(
     readonly name: string,
     readonly parent: TaskOwner,
     operation: (signal: AbortSignal) => T | PromiseLike<T>,
+    options: OwnedTaskOptions = {},
   ) {
+    this.#transferred = options.transferred ?? false;
     this.#promise = Promise.resolve()
       .then(() => operation(this.#controller.signal))
       .then(

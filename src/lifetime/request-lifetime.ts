@@ -2,7 +2,7 @@ import type { NeloAbortReason } from "./cancellation.ts";
 import { cancellationReasonFromSignal, isCancellationReason } from "./cancellation.ts";
 import type { Cleanup } from "./resource-stack.ts";
 import { LifetimeScope, type LifetimeScopeSnapshot, RequestScope } from "./scope.ts";
-import type { OwnedTask } from "./task.ts";
+import type { OwnedTask, OwnedTaskSnapshot, TaskOwner } from "./task.ts";
 
 export type RequestDiagnosticState =
   | "handling"
@@ -16,16 +16,27 @@ export interface CleanupFailure {
   readonly error: unknown;
 }
 
+export interface DeferredTaskFailure {
+  readonly name: string;
+  readonly ancestry: readonly string[];
+  readonly error: unknown;
+}
+
 export interface RequestDiagnostics {
   readonly state: RequestDiagnosticState;
   readonly handlerTasks: number;
   readonly deliveryTasks: number;
+  readonly deferredTasks: number;
   readonly handlerResources: number;
   readonly deliveryResources: number;
   readonly abortReason?: NeloAbortReason;
   readonly cleanupFailures: readonly CleanupFailure[];
+  readonly deferredFailures: readonly DeferredTaskFailure[];
   readonly pendingHandlerTasks: number;
   readonly pendingDeliveryTasks: number;
+  readonly pendingDeferredTasks: number;
+  /** Per-task deferred outcomes, including cancellation acknowledgement and late completion. */
+  readonly deferredTaskSnapshots: readonly OwnedTaskSnapshot[];
   /** Full handler ownership tree, including nested forkScope() children. */
   readonly handlerTree: LifetimeScopeSnapshot;
   /** Full delivery ownership tree, including nested forkScope() children. */
@@ -83,6 +94,7 @@ export class DeliveryScope extends LifetimeScope implements DeliveryContext {
 export class RequestLifetime {
   readonly #controller = new AbortController();
   readonly #cleanupFailures: CleanupFailure[] = [];
+  readonly #deferredTasks: OwnedTask<unknown>[] = [];
   readonly #listeners = new Set<RequestDiagnosticsListener>();
   readonly #history: RequestDiagnostics[] = [];
   readonly #externalSignal: AbortSignal;
@@ -92,6 +104,7 @@ export class RequestLifetime {
 
   readonly handler: RequestScope;
   readonly delivery: DeliveryScope;
+  readonly deferredOwner: TaskOwner;
 
   constructor(signal: AbortSignal, taskSettleTimeout = 1_000) {
     this.#externalSignal = signal;
@@ -110,6 +123,10 @@ export class RequestLifetime {
       taskSettleTimeout,
       onCleanupFailure: cleanupFailure("delivery"),
     });
+    this.deferredOwner = Object.freeze({
+      name: "deferred",
+      ancestry: Object.freeze([...this.handler.ancestry, "deferred"]),
+    });
     this.#externalAbort = (): void => {
       this.abort(cancellationReasonFromSignal(signal, { type: "client_disconnect" }));
     };
@@ -122,9 +139,24 @@ export class RequestLifetime {
     return this.#controller.signal;
   }
 
+  get hasDeferredWork(): boolean {
+    return this.#deferredTasks.length > 0;
+  }
+
+  get deferredSettled(): Promise<void> {
+    return Promise.all(this.#deferredTasks.map((task) => task.settled)).then(() => undefined);
+  }
+
+  trackDeferred(task: OwnedTask<unknown>): void {
+    this.#deferredTasks.push(task);
+    this.#emit();
+    void task.settled.then(() => this.#emit());
+  }
+
   snapshot(): RequestDiagnostics {
     const handlerTasks = this.handler.taskSnapshots;
     const deliveryTasks = this.delivery.taskSnapshots;
+    const deferredTasks = this.#deferredTasks.map((task) => task.snapshot());
     const handlerTree = this.handler.snapshot();
     const deliveryTree = this.delivery.snapshot();
     const abortReason = this.signal.aborted
@@ -137,12 +169,16 @@ export class RequestLifetime {
       state: this.#state,
       handlerTasks: handlerTasks.length,
       deliveryTasks: deliveryTasks.length,
+      deferredTasks: deferredTasks.length,
       handlerResources: handlerTree.resourceCount,
       deliveryResources: deliveryTree.resourceCount,
       ...(abortReason === undefined ? {} : { abortReason }),
       cleanupFailures: Object.freeze([...this.#cleanupFailures]),
+      deferredFailures: Object.freeze(collectDeferredFailures(deferredTasks)),
       pendingHandlerTasks: handlerTasks.filter((task) => task.state === "running").length,
       pendingDeliveryTasks: deliveryTasks.filter((task) => task.state === "running").length,
+      pendingDeferredTasks: deferredTasks.filter((task) => task.state === "running").length,
+      deferredTaskSnapshots: Object.freeze(deferredTasks),
       handlerTree,
       deliveryTree,
       forcedTermination:
@@ -319,4 +355,14 @@ export async function ownResponseDelivery(
 
 function isNeloAbortReason(value: unknown): value is NeloAbortReason {
   return isCancellationReason(value);
+}
+
+function collectDeferredFailures(
+  tasks: readonly OwnedTaskSnapshot[],
+): DeferredTaskFailure[] {
+  return tasks.flatMap((task) =>
+    task.state === "failed"
+      ? [{ name: task.name, ancestry: task.ancestry, error: task.failure }]
+      : []
+  );
 }

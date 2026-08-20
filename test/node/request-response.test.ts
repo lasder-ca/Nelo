@@ -10,7 +10,7 @@ describe("Node request and response conversion", () => {
     assert.deepEqual(nodeCapabilities, {
       clientDisconnect: "reliable",
       responseDelivery: "body_close_only",
-      deferredWork: "unavailable",
+      deferredWork: "process_tracked",
       gracefulShutdown: "adapter_managed",
       asyncContext: "explicit_only",
     });
