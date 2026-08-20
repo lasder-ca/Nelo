@@ -3,6 +3,7 @@ import { get } from "node:http";
 import { describe, it } from "node:test";
 import type { NeloAbortReason } from "../../src/lifetime/cancellation.ts";
 import { DeferredTaskError } from "../../src/lifetime/errors.ts";
+import type { RequestDiagnostics } from "../../src/lifetime/request-lifetime.ts";
 import { nodeCapabilities } from "../../src/node/capabilities.ts";
 import { serve } from "../../src/node/serve.ts";
 import { Nelo } from "../../src/web/app.ts";
@@ -142,6 +143,33 @@ describe("Node deferred work", () => {
     assert.equal((await request(address.hostname, address.port, "/abort")).status, 200);
     await server.close({ gracePeriod: 0, forceAfter: 200 });
     assert.equal((await observed.promise).type, "server_shutdown");
+  });
+
+  it("keeps request diagnostics subscribed until deferred work settles", async () => {
+    const release = deferred();
+    const diagnostics: RequestDiagnostics[] = [];
+    const app = new Nelo();
+    app.get("/diagnostics", (context) => {
+      context.defer("flush", async () => {
+        await release.promise;
+      });
+      return context.text("ok");
+    });
+
+    const server = serve(app, {
+      port: 0,
+      diagnostics: { onRequestDiagnostics: (snapshot) => diagnostics.push(snapshot) },
+    });
+    const address = await server.listen();
+    try {
+      assert.equal((await request(address.hostname, address.port, "/diagnostics")).status, 200);
+      await eventually(() => diagnostics.at(-1)?.pendingDeferredTasks === 1);
+      release.resolve();
+      await eventually(() => diagnostics.at(-1)?.pendingDeferredTasks === 0);
+      assert.equal(diagnostics.at(-1)?.deferredTaskSnapshots[0]?.state, "completed");
+    } finally {
+      await server.close();
+    }
   });
 
   it("reports deferred failures through adapter diagnostics", async () => {
