@@ -29,6 +29,7 @@ export async function handleNodeExchange(
 ): Promise<NodeDeliveryResult> {
   const monitor = monitorDisconnect(request, response, controller);
   let unsubscribe: (() => void) | undefined;
+  let diagnosticsCompletion: Promise<void> | undefined;
   try {
     let webRequest: Request;
     try {
@@ -51,6 +52,9 @@ export async function handleNodeExchange(
     unsubscribe = hooks.onRequestDiagnostics === undefined
       ? undefined
       : lifetime?.subscribe(hooks.onRequestDiagnostics);
+    if (unsubscribe !== undefined && lifetime?.hasDeferredWork) {
+      diagnosticsCompletion = lifetime.deferredSettled;
+    }
     const result = await writeNodeResponse(
       webRequest.method,
       webResponse,
@@ -68,7 +72,10 @@ export async function handleNodeExchange(
     reportDelivery(hooks, result);
     return result;
   } finally {
-    unsubscribe?.();
+    if (unsubscribe !== undefined) {
+      if (diagnosticsCompletion === undefined) unsubscribe();
+      else void diagnosticsCompletion.then(unsubscribe);
+    }
     monitor.dispose();
   }
 }
