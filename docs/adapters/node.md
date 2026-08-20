@@ -85,8 +85,8 @@ than response delivery. The HTTP response does not wait for it.
 
 Deferred failures are sent to `diagnostics.onError` as `NELO_DEFERRED_002`. Request diagnostics also
 include deferred task counts, pending work, ancestry, and failures. During shutdown Nelo drains
-active exchanges before checking deferred work so an in-flight request cannot register work after the
-shutdown code has already observed an empty deferred registry.
+active exchanges before checking deferred work so an in-flight request cannot register work after
+the shutdown code has already observed an empty deferred registry.
 
 Process tracking is not durability. A process crash loses the work, there are no automatic retries,
 and a task that ignores its signal cannot be forcibly terminated.
