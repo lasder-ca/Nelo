@@ -16,7 +16,7 @@
 
 <p align="center">
   <img alt="実験的" src="https://img.shields.io/badge/status-experimental-6d7178">
-  <img alt="Version 0.2.0 alpha 2" src="https://img.shields.io/badge/version-0.2.0--alpha.2-2864dc">
+  <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-2864dc">
   <img alt="Strict TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6">
   <a href="./LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-5bc8ad"></a>
 </p>
