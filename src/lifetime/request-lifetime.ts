@@ -35,6 +35,8 @@ export interface RequestDiagnostics {
   readonly pendingHandlerTasks: number;
   readonly pendingDeliveryTasks: number;
   readonly pendingDeferredTasks: number;
+  /** Per-task deferred outcomes, including cancellation acknowledgement and late completion. */
+  readonly deferredTaskSnapshots: readonly OwnedTaskSnapshot[];
   /** Full handler ownership tree, including nested forkScope() children. */
   readonly handlerTree: LifetimeScopeSnapshot;
   /** Full delivery ownership tree, including nested forkScope() children. */
@@ -176,6 +178,7 @@ export class RequestLifetime {
       pendingHandlerTasks: handlerTasks.filter((task) => task.state === "running").length,
       pendingDeliveryTasks: deliveryTasks.filter((task) => task.state === "running").length,
       pendingDeferredTasks: deferredTasks.filter((task) => task.state === "running").length,
+      deferredTaskSnapshots: Object.freeze(deferredTasks),
       handlerTree,
       deliveryTree,
       forcedTermination:
