@@ -125,14 +125,15 @@ describe("Node deferred work", () => {
     const observed = deferred<NeloAbortReason>();
     const app = new Nelo();
     app.get("/abort", (context) => {
-      context.defer("worker", (signal) => new Promise<void>((_resolve, reject) => {
-        const onAbort = (): void => {
-          observed.resolve(signal.reason as NeloAbortReason);
-          reject(signal.reason);
-        };
-        if (signal.aborted) onAbort();
-        else signal.addEventListener("abort", onAbort, { once: true });
-      }));
+      context.defer("worker", (signal) =>
+        new Promise<void>((_resolve, reject) => {
+          const onAbort = (): void => {
+            observed.resolve(signal.reason as NeloAbortReason);
+            reject(signal.reason);
+          };
+          if (signal.aborted) onAbort();
+          else signal.addEventListener("abort", onAbort, { once: true });
+        }));
       return context.text("ok");
     });
 
