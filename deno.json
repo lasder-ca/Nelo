@@ -1,6 +1,6 @@
 {
   "name": "nelo",
-  "version": "0.2.0-alpha.2",
+  "version": "0.2.0",
   "exports": {
     ".": "./mod.ts",
     "./lifetime": "./src/lifetime/mod.ts",
