@@ -11,12 +11,12 @@
 </p>
 
 <p align="center">
-  <strong>Request-owned tasks, resources, cancellation, and response delivery for TypeScript.</strong>
+  <strong>Request-owned tasks, resources, cancellation, response delivery, and deferred work for TypeScript.</strong>
 </p>
 
 <p align="center">
   <img alt="Experimental" src="https://img.shields.io/badge/status-experimental-6d7178">
-  <img alt="Version 0.2.0 alpha 1" src="https://img.shields.io/badge/version-0.2.0--alpha.1-2864dc">
+  <img alt="Version 0.2.0 alpha 2" src="https://img.shields.io/badge/version-0.2.0--alpha.2-2864dc">
   <img alt="Strict TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6">
   <a href="./LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-5bc8ad"></a>
 </p>
@@ -26,8 +26,9 @@
 </p>
 
 Nelo is a Web Standards framework that treats each request as the owner of the work it starts. A
-handler may return a `Response` while tasks are still running, resources are still open, or a
-response body is still being delivered. Nelo keeps those lifetimes explicit.
+handler may return a `Response` while tasks are still running, resources are still open, a response
+body is still being delivered, or explicitly deferred work has been transferred beyond the response.
+Nelo keeps those lifetimes explicit.
 
 > Returning a `Response` is not the same as completing the request lifetime.
 
@@ -58,16 +59,19 @@ Request lifetime
 │   ├── context.forkScope() → nested task/resource lifetime
 │   ├── context.deadline()
 │   └── context.use()
-└── Delivery scope
-    ├── Response.body
-    ├── context.delivery.fork()
-    ├── context.delivery.forkScope()
-    └── context.delivery.use()
+├── Delivery scope
+│   ├── Response.body
+│   ├── context.delivery.fork()
+│   ├── context.delivery.forkScope()
+│   └── context.delivery.use()
+└── Deferred scope
+    └── context.defer() → explicit post-response ownership transfer
 ```
 
 The handler scope closes after the handler finishes. The delivery scope remains active until the
-body completes, fails, is cancelled, or the transport reports a disconnect. Resources are released
-once in reverse acquisition order.
+body completes, fails, is cancelled, or the transport reports a disconnect. Deferred work is an
+explicit transfer beyond the response and is tracked by adapters that support it. Resources are
+released once in reverse acquisition order.
 
 ## Core API
 
@@ -78,6 +82,7 @@ once in reverse acquisition order.
 | `context.forkScope(name, operation)`     | Own a nested task/resource lifetime as one task.          |
 | `context.signal`                         | Forward cooperative cancellation to request work.         |
 | `context.deadline(duration)`             | Create a disposable signal with a shorter request budget. |
+| `context.defer(name, operation)`         | Explicitly transfer best-effort work beyond the response. |
 | `context.use(name, acquire, cleanup?)`   | Acquire and release a handler-owned resource.             |
 | `context.delivery.fork(name, operation)` | Start work owned by response delivery.                    |
 | `context.delivery.forkScope(...)`        | Own a nested lifetime through response delivery.          |
@@ -91,6 +96,18 @@ the handler scope closes.
 tasks, resources, or deadlines. Child lifetimes inherit cancellation and remain visible in
 `handlerTree` or `deliveryTree` diagnostics. The previous low-level `forkChild()` method remains as
 a deprecated compatibility alias.
+
+### Deferred work
+
+`context.defer(name, operation)` explicitly transfers best-effort work beyond the response. The
+operation gets its own `AbortSignal`; its failure is observable as `NELO_DEFERRED_002`. A runtime
+without deferred-work support fails explicitly with `NELO_DEFERRED_001` instead of silently creating
+unowned background work.
+
+The Node adapter implements process-tracked deferred work. `server.close()` first drains active HTTP
+exchanges, then waits for registered deferred tasks within the remaining grace period. At grace
+expiry remaining deferred work receives `server_shutdown`. This is in-memory process tracking, not a
+durable queue, retry system, or exactly-once delivery guarantee.
 
 ## Security boundary
 
