@@ -1,6 +1,6 @@
 import type { DeadlineDuration, RequestDeadline } from "../lifetime/deadline.ts";
 import type { DeferredWorkRegistrar } from "../lifetime/deferred.ts";
-import { DeferredWorkUnavailableError } from "../lifetime/errors.ts";
+import { DeferredWorkUnavailableError, ScopeClosedError } from "../lifetime/errors.ts";
 import type { DeliveryContext, RequestLifetime } from "../lifetime/request-lifetime.ts";
 import type { LifetimeScope, RequestScope } from "../lifetime/scope.ts";
 import type { OwnedTask } from "../lifetime/task.ts";
@@ -64,6 +64,7 @@ export class RequestContext implements NeloContext {
     name: string,
     operation: (signal: AbortSignal) => unknown | PromiseLike<unknown>,
   ): void {
+    if (this.#scope.state !== "open") throw new ScopeClosedError("defer work");
     if (this.#deferredWork === undefined) throw new DeferredWorkUnavailableError();
     const task = this.#deferredWork.defer(this.#lifetime.deferredOwner, name, operation);
     this.#lifetime.trackDeferred(task);
