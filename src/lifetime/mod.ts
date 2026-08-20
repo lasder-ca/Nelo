@@ -1,10 +1,12 @@
 export * from "./cancellation.ts";
 export * from "./capabilities.ts";
 export * from "./deadline.ts";
+export * from "./deferred.ts";
 export * from "./errors.ts";
 export * from "./resource-stack.ts";
 export type {
   CleanupFailure,
+  DeferredTaskFailure,
   DeliveryContext,
   RequestDiagnostics,
   RequestDiagnosticsListener,

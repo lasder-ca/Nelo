@@ -1,12 +1,16 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { type RequestDiagnosticsListener, responseLifetime } from "../lifetime/request-lifetime.ts";
+import type { NeloRuntimeContext } from "../lifetime/deferred.ts";
+import {
+  type RequestDiagnosticsListener,
+  responseLifetime,
+} from "../lifetime/request-lifetime.ts";
 import { monitorDisconnect } from "./disconnect.ts";
 import { type NodeDeliveryHooks, type NodeDeliveryResult, writeNodeResponse } from "./delivery.ts";
 import { MalformedNodeRequestError } from "./errors.ts";
 import { createWebRequest, type NodeRequestOptions } from "./request.ts";
 
 export interface FetchApplication {
-  fetch(request: Request): Promise<Response>;
+  fetch(request: Request, runtime?: NeloRuntimeContext): Promise<Response>;
 }
 
 export interface NodeAdapterDiagnostics {
@@ -24,6 +28,7 @@ export async function handleNodeExchange(
   controller: AbortController,
   options: NodeRequestOptions = {},
   hooks: NodeExchangeHooks = {},
+  runtime: NeloRuntimeContext = {},
 ): Promise<NodeDeliveryResult> {
   const monitor = monitorDisconnect(request, response, controller);
   let unsubscribe: (() => void) | undefined;
@@ -44,7 +49,7 @@ export async function handleNodeExchange(
       return result;
     }
 
-    const webResponse = await app.fetch(webRequest);
+    const webResponse = await app.fetch(webRequest, runtime);
     const lifetime = responseLifetime(webResponse);
     unsubscribe = hooks.onRequestDiagnostics === undefined
       ? undefined
