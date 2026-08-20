@@ -1,8 +1,9 @@
-import { assertEquals, assertInstanceOf, assertMatch } from "@std/assert";
-import { DeferredTaskError } from "../lifetime/errors.ts";
+import { assertEquals, assertInstanceOf, assertMatch, assertThrows } from "@std/assert";
+import { DeferredTaskError, ScopeClosedError } from "../lifetime/errors.ts";
 import { DeferredWorkRegistry } from "../lifetime/deferred.ts";
 import type { RequestDiagnostics } from "../lifetime/request-lifetime.ts";
 import { Nelo } from "./app.ts";
+import type { NeloContext } from "./types.ts";
 
 function deferred<T = void>(): {
   readonly promise: Promise<T>;
@@ -40,6 +41,7 @@ Deno.test("deferred work does not block the HTTP response and remains diagnostic
   await registry.whenEmpty();
   await Promise.resolve();
   assertEquals(diagnostics.at(-1)?.pendingDeferredTasks, 0);
+  assertEquals(diagnostics.at(-1)?.deferredTaskSnapshots[0]?.state, "completed");
 });
 
 Deno.test("deferred task failures are observable without changing the response", async () => {
@@ -66,6 +68,7 @@ Deno.test("deferred task failures are observable without changing the response",
   assertInstanceOf(failures[0], DeferredTaskError);
   assertEquals(failures[0]?.code, "NELO_DEFERRED_002");
   assertEquals(diagnostics.at(-1)?.deferredFailures.length, 1);
+  assertEquals(diagnostics.at(-1)?.deferredTaskSnapshots[0]?.state, "failed");
 });
 
 Deno.test("defer fails explicitly when the runtime has no deferred registrar", async () => {
@@ -78,4 +81,26 @@ Deno.test("defer fails explicitly when the runtime has no deferred registrar", a
   const response = await app.fetch(new Request("https://example.test/unsupported"));
   assertEquals(response.status, 500);
   assertMatch(await response.text(), /NELO_DEFERRED_001/);
+});
+
+Deno.test("defer rejects new work after the handler scope closes", async () => {
+  const registry = new DeferredWorkRegistry();
+  const app = new Nelo();
+  let retainedContext: NeloContext | undefined;
+
+  app.get("/late", (context) => {
+    retainedContext = context;
+    return context.text("ok");
+  });
+
+  const response = await app.fetch(new Request("https://example.test/late"), {
+    deferredWork: registry,
+  });
+  assertEquals(await response.text(), "ok");
+
+  assertThrows(
+    () => retainedContext!.defer("too-late", () => undefined),
+    ScopeClosedError,
+  );
+  assertEquals(registry.pending, 0);
 });
