@@ -1,6 +1,6 @@
 {
   "name": "@lasder/nelo",
-  "version": "0.2.0-alpha.2",
+  "version": "0.2.0",
   "private": false,
   "type": "module",
   "description": "A request-ownership runtime and Web Standards framework for TypeScript.",
