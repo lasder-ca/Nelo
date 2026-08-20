@@ -1,9 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { NeloRuntimeContext } from "../lifetime/deferred.ts";
-import {
-  type RequestDiagnosticsListener,
-  responseLifetime,
-} from "../lifetime/request-lifetime.ts";
+import { type RequestDiagnosticsListener, responseLifetime } from "../lifetime/request-lifetime.ts";
 import { monitorDisconnect } from "./disconnect.ts";
 import { type NodeDeliveryHooks, type NodeDeliveryResult, writeNodeResponse } from "./delivery.ts";
 import { MalformedNodeRequestError } from "./errors.ts";
