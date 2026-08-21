@@ -50,22 +50,55 @@ jobs:
 
           if gh release view "${tag}" >/dev/null 2>&1; then
             echo "GitHub release ${tag} already exists"
-            exit 0
-          fi
-
-          args=(
-            release create "${tag}"
-            --target "${GITHUB_SHA}"
-            --title "Nelo ${version}"
-            --generate-notes
-          )
-          if [[ "${version}" == *-* ]]; then
-            args+=(--prerelease)
           else
-            args+=(--latest)
+            args=(
+              release create "${tag}"
+              --target "${GITHUB_SHA}"
+              --title "Nelo ${version}"
+              --generate-notes
+            )
+            if [[ "${version}" == *-* ]]; then
+              args+=(--prerelease)
+            else
+              args+=(--latest)
+            fi
+            gh "${args[@]}"
           fi
 
-          gh "${args[@]}"
+      - name: Record release workflow run state
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+          tag_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" --jq .object.sha)"
+          run_id=""
+
+          for attempt in $(seq 1 10); do
+            run_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/publish.yml/runs?event=release&head_sha=${tag_sha}&per_page=1" --jq '.workflow_runs[0].id // empty')"
+            if [[ -n "${run_id}" ]]; then
+              break
+            fi
+            sleep 2
+          done
+
+          if [[ -n "${run_id}" ]]; then
+            run_status="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq .status)"
+            conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq '.conclusion // "none"')"
+            marker="release-run-${run_id}-${run_status}-${conclusion}"
+          else
+            marker="release-run-not-found"
+          fi
+
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/.npm-publish-trigger?ref=main" --jq .sha)"
+          encoded="$(printf '%s\n' "${version} ${marker}" | base64 -w0)"
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/.npm-publish-trigger" \
+            -f message="release: record ${version} workflow state" \
+            -f content="${encoded}" \
+            -f sha="${current_sha}" \
+            -f branch="main" >/dev/null
 
   publish:
     if: github.repository == 'lasder-ca/Nelo' && github.event_name != 'push'
