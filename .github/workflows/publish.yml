@@ -166,9 +166,9 @@ jobs:
           set -euo pipefail
           version="$(node -p "require('./package.json').version")"
           if [[ "${PUBLISH_RESULT}" == "success" ]]; then
-            status="published"
+            status="published-run-${GITHUB_RUN_ID}"
           else
-            status="publish-${PUBLISH_RESULT}"
+            status="publish-${PUBLISH_RESULT}-run-${GITHUB_RUN_ID}"
           fi
 
           current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/.npm-publish-trigger?ref=main" --jq .sha)"
