@@ -97,6 +97,29 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Verify npm publisher identity
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          package_name="$(node -p "require('./package.json').name")"
+          identity="$(npm whoami)"
+          scope="${package_name%%/*}"
+          scope="${scope#@}"
+          echo "npm authenticated user: ${identity}"
+          echo "package scope: @${scope}"
+
+          if [[ "${identity}" == "${scope}" ]]; then
+            echo "scope ownership: authenticated user scope"
+          elif npm org ls "${scope}" "${identity}" --json >/tmp/npm-org.json 2>/tmp/npm-org.err; then
+            echo "scope ownership: npm organization membership found"
+            cat /tmp/npm-org.json
+          else
+            echo "scope ownership: no verifiable user/org ownership for this token"
+            cat /tmp/npm-org.err || true
+          fi
+
       - name: Validate package without publish credentials
         shell: bash
         run: |
