@@ -76,6 +76,10 @@ jobs:
 
           if npm view "${package_name}@${version}" version >/dev/null 2>&1; then
             echo "${package_name}@${version} is already published"
+            tagged_version="$(npm view "${package_name}@${publish_tag}" version 2>/dev/null || true)"
+            if [[ "${tagged_version}" != "${version}" ]]; then
+              npm dist-tag add "${package_name}@${version}" "${publish_tag}"
+            fi
           else
             npm publish --access public --tag "${publish_tag}" --provenance
           fi
