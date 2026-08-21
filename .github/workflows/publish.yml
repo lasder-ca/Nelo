@@ -14,12 +14,61 @@ permissions:
   id-token: write
 
 concurrency:
-  group: npm-publish-${{ github.ref }}
+  group: nelo-release-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  create-release:
+    if: github.repository == 'lasder-ca/Nelo' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Require release trigger to be current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          main_sha="$(git rev-parse origin/main)"
+          head_sha="$(git rev-parse HEAD)"
+          test "${head_sha}" = "${main_sha}" || {
+            echo "release must run from current main (${main_sha}), got ${head_sha}" >&2
+            exit 1
+          }
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "GitHub release ${tag} already exists"
+            exit 0
+          fi
+
+          args=(
+            release create "${tag}"
+            --target "${GITHUB_SHA}"
+            --title "Nelo ${version}"
+            --generate-notes
+          )
+          if [[ "${version}" == *-* ]]; then
+            args+=(--prerelease)
+          else
+            args+=(--latest)
+          fi
+
+          gh "${args[@]}"
+
   publish:
-    if: github.repository == 'lasder-ca/Nelo'
+    if: github.repository == 'lasder-ca/Nelo' && github.event_name != 'push'
     runs-on: ubuntu-latest
     environment: npm
     steps:
@@ -101,31 +150,33 @@ jobs:
           echo "${package_name}@${version} is not publicly readable" >&2
           exit 1
 
-      - name: Create GitHub release
-        if: github.event_name != 'release'
+  mark-result:
+    if: github.repository == 'lasder-ca/Nelo' && github.event_name == 'release' && always()
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Record publish result on main
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
         run: |
           set -euo pipefail
           version="$(node -p "require('./package.json').version")"
-          tag="v${version}"
-
-          if gh release view "${tag}" >/dev/null 2>&1; then
-            echo "GitHub release ${tag} already exists"
-            exit 0
-          fi
-
-          args=(
-            release create "${tag}"
-            --target "${GITHUB_SHA}"
-            --title "Nelo ${version}"
-            --generate-notes
-          )
-          if [[ "${version}" == *-* ]]; then
-            args+=(--prerelease)
+          if [[ "${PUBLISH_RESULT}" == "success" ]]; then
+            status="published"
           else
-            args+=(--latest)
+            status="publish-${PUBLISH_RESULT}"
           fi
 
-          gh "${args[@]}"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/.npm-publish-trigger?ref=main" --jq .sha)"
+          encoded="$(printf '%s\n' "${version} ${status}" | base64 -w0)"
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/.npm-publish-trigger" \
+            -f message="release: mark ${version} ${status}" \
+            -f content="${encoded}" \
+            -f sha="${current_sha}" \
+            -f branch="main" >/dev/null
