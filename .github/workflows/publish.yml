@@ -194,9 +194,9 @@ jobs:
             status="publish-${PUBLISH_RESULT}-run-${GITHUB_RUN_ID}"
           fi
 
-          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/.npm-publish-trigger?ref=main" --jq .sha)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/.npm-publish-status?ref=main" --jq .sha)"
           encoded="$(printf '%s\n' "${version} ${status}" | base64 -w0)"
-          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/.npm-publish-trigger" \
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/.npm-publish-status" \
             -f message="release: mark ${version} ${status}" \
             -f content="${encoded}" \
             -f sha="${current_sha}" \
