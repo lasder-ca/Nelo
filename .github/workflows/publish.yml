@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
   release:
     types: [published]
+  push:
+    branches: [main]
+    paths:
+      - .npm-publish-trigger
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 concurrency:
@@ -96,3 +100,32 @@ jobs:
           done
           echo "${package_name}@${version} is not publicly readable" >&2
           exit 1
+
+      - name: Create GitHub release
+        if: github.event_name != 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "GitHub release ${tag} already exists"
+            exit 0
+          fi
+
+          args=(
+            release create "${tag}"
+            --target "${GITHUB_SHA}"
+            --title "Nelo ${version}"
+            --generate-notes
+          )
+          if [[ "${version}" == *-* ]]; then
+            args+=(--prerelease)
+          else
+            args+=(--latest)
+          fi
+
+          gh "${args[@]}"
