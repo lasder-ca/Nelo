@@ -59,7 +59,7 @@ jobs:
           npm run check:package
           npm run check:tarball
 
-      - name: Publish prerelease
+      - name: Publish package
         shell: bash
         env:
           # Temporary fallback until npm Trusted Publishing is configured for this workflow.
@@ -69,11 +69,19 @@ jobs:
           set -euo pipefail
           package_name="$(node -p "require('./package.json').name")"
           version="$(node -p "require('./package.json').version")"
+          publish_tag="latest"
+          if [[ "${version}" == *-* ]]; then
+            publish_tag="next"
+          fi
 
           if npm view "${package_name}@${version}" version >/dev/null 2>&1; then
             echo "${package_name}@${version} is already published"
+            tagged_version="$(npm view "${package_name}@${publish_tag}" version 2>/dev/null || true)"
+            if [[ "${tagged_version}" != "${version}" ]]; then
+              npm dist-tag add "${package_name}@${version}" "${publish_tag}"
+            fi
           else
-            npm publish --access public --tag next --provenance
+            npm publish --access public --tag "${publish_tag}" --provenance
           fi
 
           npm access set status=public "${package_name}"
