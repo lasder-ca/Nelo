@@ -66,7 +66,11 @@ jobs:
           fi
 
   publish:
-    if: github.repository == 'lasder-ca/Nelo'
+    needs: create-release
+    if: >-
+      always() &&
+      github.repository == 'lasder-ca/Nelo' &&
+      (github.event_name != 'push' || needs.create-release.result == 'success')
     runs-on: ubuntu-latest
     environment: npm
     steps:
