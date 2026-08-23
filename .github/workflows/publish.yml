@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nelo-release-${{ github.event_name }}-${{ github.ref }}
+  group: nelo-release
   cancel-in-progress: false
 
 jobs:
