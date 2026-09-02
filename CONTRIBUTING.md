@@ -6,7 +6,7 @@ must stay portable; Node-only behavior belongs under `src/node` and the `nelo/no
 ## Setup
 
 ```sh
-git clone https://github.com/lasder-ca/Nelo.git
+git clone https://github.com/sahenjp/Nelo.git
 cd Nelo
 npm ci
 ```
