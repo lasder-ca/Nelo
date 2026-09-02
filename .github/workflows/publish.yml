@@ -19,7 +19,7 @@ concurrency:
 jobs:
   create-release:
     timeout-minutes: 15
-    if: github.repository == 'lasder-ca/Nelo' && github.event_name == 'push'
+    if: github.repository == 'sahenjp/Nelo' && github.event_name == 'push'
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -75,7 +75,7 @@ jobs:
       id-token: write
     if: >-
       always() &&
-      github.repository == 'lasder-ca/Nelo' &&
+      github.repository == 'sahenjp/Nelo' &&
       (github.event_name != 'push' || needs.create-release.result == 'success')
     runs-on: ubuntu-latest
     environment: npm
@@ -183,7 +183,7 @@ jobs:
 
   mark-result:
     timeout-minutes: 10
-    if: github.repository == 'lasder-ca/Nelo' && always()
+    if: github.repository == 'sahenjp/Nelo' && always()
     needs: publish
     permissions:
       contents: write
