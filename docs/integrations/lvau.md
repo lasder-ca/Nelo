@@ -1,7 +1,7 @@
 # Lvau integration
 
-Nelo can own a local [`lvau-cli`](https://github.com/lasder-ca/lvau) process as part of a request.
-The example in [`examples/lvau-service`](../../examples/lvau-service/mod.ts) exposes a small
+Nelo can own a local [`lvau-cli`](https://github.com/sahenjp/lvau) process as part of a request. The
+example in [`examples/lvau-service`](../../examples/lvau-service/mod.ts) exposes a small
 upload-to-capsule endpoint and keeps the process, temporary files, and cleanup inside the request
 lifetime.
 

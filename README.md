@@ -135,7 +135,7 @@ Both assets are flat SVGs with transparent backgrounds and can be referenced dir
 ## Development
 
 ```sh
-git clone https://github.com/lasder-ca/Nelo.git
+git clone https://github.com/sahenjp/Nelo.git
 cd Nelo
 npm ci
 npm run format:check

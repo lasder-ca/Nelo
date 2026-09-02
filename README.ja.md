@@ -116,7 +116,7 @@ request bodyはstreamingのまま扱われます。アップロード上限はen
 ## 開発
 
 ```sh
-git clone https://github.com/lasder-ca/Nelo.git
+git clone https://github.com/sahenjp/Nelo.git
 cd Nelo
 npm ci
 npm run format:check

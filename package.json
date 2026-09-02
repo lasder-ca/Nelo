@@ -7,11 +7,11 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lasder-ca/Nelo.git"
+    "url": "git+https://github.com/sahenjp/Nelo.git"
   },
   "homepage": "https://nelo.lattee.jp",
   "bugs": {
-    "url": "https://github.com/lasder-ca/Nelo/issues"
+    "url": "https://github.com/sahenjp/Nelo/issues"
   },
   "keywords": [
     "typescript",
