@@ -5,7 +5,7 @@
 Do not publish a suspected vulnerability in a public issue, discussion, pull request, log, or test fixture.
 Use a private GitHub security advisory instead:
 
-https://github.com/lasder-ca/Nelo/security/advisories/new
+https://github.com/sahenjp/Nelo/security/advisories/new
 
 Include the affected version or commit, runtime, a minimal safe reproduction, expected and observed
 behavior, and the confidentiality, integrity, or availability impact. Do not include production
