@@ -4,9 +4,7 @@ export type RequestResource = Disposable | AsyncDisposable | (Disposable & Async
 export type Cleanup = () => void | PromiseLike<void>;
 
 interface ResourceEntry {
-  readonly name: string;
   readonly cleanup: Cleanup;
-  disposed: boolean;
 }
 
 export class ResourceStack {
@@ -27,7 +25,7 @@ export class ResourceStack {
     const dispose = cleanup === undefined
       ? resourceDisposer(name, resource)
       : () => cleanup(resource);
-    this.#entries.push({ name, cleanup: dispose, disposed: false });
+    this.#entries.push({ cleanup: dispose });
     return resource;
   }
 
@@ -42,8 +40,6 @@ export class ResourceStack {
 
     for (let index = this.#entries.length - 1; index >= 0; index--) {
       const entry = this.#entries[index]!;
-      if (entry.disposed) continue;
-      entry.disposed = true;
       try {
         await entry.cleanup();
       } catch (error) {
