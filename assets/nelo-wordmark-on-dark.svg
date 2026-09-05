@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="420" viewBox="0 0 1120 420" role="img" aria-labelledby="title desc">
   <title id="title">Nelo</title>
   <desc id="desc">Nelo logo with the tagline Every request owns its work.</desc>
+  <!-- こんときの俺svgうますぎだろ by 26/9/5の私 -->
   <defs>
     <linearGradient id="blue" x1="64" y1="50" x2="148" y2="306" gradientUnits="userSpaceOnUse"><stop stop-color="#3183EA"/><stop offset="1" stop-color="#2368D0"/></linearGradient>
     <linearGradient id="mint" x1="223" y1="50" x2="304" y2="260" gradientUnits="userSpaceOnUse"><stop stop-color="#6ED2BE"/><stop offset="1" stop-color="#4DB9A7"/></linearGradient>
