@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <strong>TypeScriptのリクエストに、タスク、リソース、中断、レスポンス配信、Deferred Workを所有させます。</strong>
+  <strong>リクエストに紐づく処理の寿命を管理する。</strong>
 </p>
 
 <p align="center">
