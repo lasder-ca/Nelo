@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <strong>Request-owned tasks, resources, cancellation, response delivery, and deferred work for TypeScript.</strong>
+  <strong>Manage the lifetime of work owned by each request.</strong>
 </p>
 
 <p align="center">
